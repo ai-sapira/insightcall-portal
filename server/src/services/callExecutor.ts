@@ -518,6 +518,9 @@ export class CallExecutor {
       const { v4: uuidv4 } = require('uuid');
       const ticketUuid = uuidv4(); // Generar UUID válido para Supabase
       
+      // Usar el método mejorado que incluye datos específicos según tipo de incidencia
+      const notasEspecificas = this.generateTicketNotes(decision, call);
+      
       const descripcion = `Ticket automático generado por IA
 
 📞 Llamada: ${call.conversation_id}
@@ -529,6 +532,8 @@ export class CallExecutor {
 • Tipo: ${incident.type}
 • Motivo: ${incident.reason}
 • Póliza: ${numeroPoliza || 'No especificada'}
+
+${notasEspecificas}
 
 🎫 ID Nogal: ${ticketId}
 📝 Procesado automáticamente por el nuevo sistema`;
