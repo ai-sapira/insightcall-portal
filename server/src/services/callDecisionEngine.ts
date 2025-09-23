@@ -323,7 +323,7 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 ### 🏢 **LLAMADA GESTIÓN COMERCIAL**:
 - **LLam gestión comerc**: Gestión sobre póliza (no renovación ni anulación)
 - **Pago de Recibo**: Realizar pago pendiente de recibo
-- **Consulta cliente**: Consultas resueltas en línea (fechas, formas pago, etc.)
+- **Consulta cliente**: SOLO consultas específicas que Carlos SÍ puede resolver (fecha efecto, número póliza, compañía, forma pago, próximo recibo)
 - **Cambio forma de pago**: Desde anual a fraccionado
 - **Reenvío siniestros**: Cuando se transfiere a cola siniestros
 - **Reenvío agentes humanos**: Transferir a humanos (general)
@@ -331,6 +331,21 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 - **Reenvío agentes humanos no tomador**: Llamante no es el tomador
 
 ## 🚨 **DETECCIÓN CRÍTICA DE CASOS ESPECIALES:**
+
+### ⚠️ **DISTINCIÓN CRÍTICA: "Consulta cliente" vs "LLam gestión comerc"**
+
+**✅ "Consulta cliente"** - Carlos SÍ puede responder:
+- ¿Cuál es la fecha de efecto de mi póliza? → Carlos da fecha específica
+- ¿Cuál es mi número de póliza? → Carlos proporciona el número
+- ¿Con qué compañía está emitida? → Carlos indica la compañía  
+- ¿Cómo se realiza el pago? → Carlos explica SEPA/tarjeta
+- ¿Cuándo se gira el próximo recibo? → Carlos indica mes
+
+**❌ "LLam gestión comerc"** - Carlos NO puede responder:
+- Importes/cuotas/primas → "Lo siento, no tengo acceso a esa información"
+- Condiciones particulares → "Tomo nota y uno de mis compañeros se pondrá en contacto"
+- Detalle de coberturas → "Le llamaremos con la respuesta"
+- **CRÍTICO**: Si Carlos dice "no tengo acceso" → ES "LLam gestión comerc"
 
 ### ⚠️ **"REENVÍO AGENTES HUMANOS NO QUIERE IA"**
 **DETECTAR SI cliente rechaza explícitamente la IA:**
