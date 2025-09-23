@@ -84,7 +84,8 @@ Carlos SÍ puede y responde completamente a consultas específicas permitidas:
 Carlos NO puede resolver consultas fuera de su alcance:
 - ❌ Agente: "Lo siento, no tengo acceso a esa información ahora mismo"
 - ❌ Agente: "Tomo nota y uno de mis compañeros se pondrá en contacto"
-- ❌ Consultas sobre: condiciones particulares, detalle coberturas, importes primas, etc.
+- ❌ Consultas sobre: condiciones particulares, detalle coberturas, **IMPORTES/CUOTAS/PRIMAS**, etc.
+- **CRÍTICO**: Si Carlos NO puede dar la respuesta específica → ES "LLam gestión comerc"
 - **Tipo**: "Llamada gestión comercial" + **Motivo**: "LLam gestión comerc"
 
 ### **DUPLICADO DE PÓLIZA**
@@ -138,7 +139,13 @@ USER: "¿Cuál es mi número de póliza?"
 AGENT: "Es AU0420225024935. Guarda este número: te lo pedirán en gestiones y partes"
 **CLASIFICACIÓN**: "Llamada gestión comercial" + "Consulta cliente"
 
-**EJEMPLO 6 - GESTIÓN NO RESUELTA (CORRECTO)**:
+**EJEMPLO 6 - GESTIÓN NO RESUELTA - IMPORTES (CORRECTO)**:
+USER: "quiero saber el importe de mis cuotas para las polizas"
+AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y uno de mis compañeros se pondrá en contacto para revisarlo con usted"
+**CLASIFICACIÓN**: "Llamada gestión comercial" + "LLam gestión comerc"
+**RAZÓN**: Carlos NO puede proporcionar importes/cuotas específicos
+
+**EJEMPLO 7 - GESTIÓN NO RESUELTA - COBERTURAS (CORRECTO)**:
 USER: "¿Mi póliza cubre filtraciones de agua?"
 AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y uno de mis compañeros se pondrá en contacto"
 **CLASIFICACIÓN**: "Llamada gestión comercial" + "LLam gestión comerc"
@@ -148,10 +155,12 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
 1. **PRIORIZA EL RECHAZO A IA** - Si cliente dice "no quiero máquina/robot/IA" → ES "Reenvío agentes humanos no quiere IA"
 2. **PRIORIZA DATOS INCOMPLETOS** - Si cliente no tiene datos necesarios → ES "Datos incompletos"
 3. **PRIORIZA NO TOMADOR** - Si llamante identificado ≠ propietario póliza consultada → ES "Reenvío agentes humanos no tomador"
-4. **DETECTA MENCIONES DE TERCEROS** - Si dice "mi hermano/esposa/hijo" + "póliza/seguro" → ES "Reenvío agentes humanos no tomador"
-5. **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
-6. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
-7. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
+4. **DETECTA GESTIÓN NO RESUELTA** - Si Carlos dice "no tengo acceso" o "tomo nota" → ES "LLam gestión comerc"
+5. **DETECTA MENCIONES DE TERCEROS** - Si dice "mi hermano/esposa/hijo" + "póliza/seguro" → ES "Reenvío agentes humanos no tomador"
+6. **CONSULTAS DE IMPORTES/CUOTAS** - Si pregunta sobre importes y Carlos no puede responder → ES "LLam gestión comerc"
+7. **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
+8. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
+9. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
 
 ## 📞 **RELLAMADAS (SOLO SI ES EXPLÍCITO):**
 
