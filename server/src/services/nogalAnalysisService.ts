@@ -70,16 +70,22 @@ Cliente solicita algo pero NO tiene la información necesaria:
 - La gestión NO se puede completar en la misma llamada por falta de datos
 - **Tipo**: "Modificación póliza emitida" + **Motivo**: "Datos incompletos"
 
-### **GESTIÓN NO RESUELTA**
-Agente NO puede resolver en la misma llamada:
-- Agente: "no tengo acceso", "tengo que consultar", "le llamaremos"
-- **Tipo**: "Llamada gestión comercial" + **Motivo**: "LLam gestión comerc"
+### **CONSULTA CLIENTE (RESUELTA DIRECTAMENTE)**
+Carlos SÍ puede y responde completamente a consultas específicas permitidas:
+- ✅ Pregunta sobre fecha de efecto → Carlos responde con fecha específica
+- ✅ Pregunta sobre número de póliza → Carlos proporciona el número
+- ✅ Pregunta sobre compañía → Carlos indica la compañía
+- ✅ Pregunta sobre forma de pago → Carlos explica SEPA/tarjeta
+- ✅ Pregunta sobre próximo recibo → Carlos indica mes de renovación
+- **Tipo**: "Llamada gestión comercial" + **Motivo**: "Consulta cliente"
+- **IMPORTANTE**: Aunque la consulta se resuelva en la llamada, SÍ se debe crear ticket para registro
 
-        ### **CONSULTA RESUELTA**
-        Agente SÍ responde completamente:
-        - Se proporciona toda la información solicitada
-        - **Tipo**: "Llamada gestión comercial" + **Motivo**: "Consulta cliente"
-        - **IMPORTANTE**: Aunque la consulta se resuelva en la llamada, SÍ se debe crear ticket para registro y seguimiento
+### **GESTIÓN COMERCIAL NO RESUELTA**
+Carlos NO puede resolver consultas fuera de su alcance:
+- ❌ Agente: "Lo siento, no tengo acceso a esa información ahora mismo"
+- ❌ Agente: "Tomo nota y uno de mis compañeros se pondrá en contacto"
+- ❌ Consultas sobre: condiciones particulares, detalle coberturas, importes primas, etc.
+- **Tipo**: "Llamada gestión comercial" + **Motivo**: "LLam gestión comerc"
 
 ### **DUPLICADO DE PÓLIZA**
 Cliente solicita copia de su póliza:
@@ -127,10 +133,14 @@ USER: "¿Es para una nueva contratación de una póliza de hogar?"
 AGENT: "para una nueva contratación de una póliza de hogar, un compañero se pondrá en contacto"
 **CLASIFICACIÓN**: "Nueva contratación de seguros" + "Contratación Póliza" + Ramo: "HOGAR"
 
-**EJEMPLO 5 - GESTIÓN NO RESUELTA (CORRECTO)**:
+**EJEMPLO 5 - CONSULTA CLIENTE RESUELTA (CORRECTO)**:
+USER: "¿Cuál es mi número de póliza?"
+AGENT: "Es AU0420225024935. Guarda este número: te lo pedirán en gestiones y partes"
+**CLASIFICACIÓN**: "Llamada gestión comercial" + "Consulta cliente"
+
+**EJEMPLO 6 - GESTIÓN NO RESUELTA (CORRECTO)**:
 USER: "¿Mi póliza cubre filtraciones de agua?"
-AGENT: "No tengo acceso a esa información"
-AGENT: "Le llamaremos con la respuesta"
+AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y uno de mis compañeros se pondrá en contacto"
 **CLASIFICACIÓN**: "Llamada gestión comercial" + "LLam gestión comerc"
 
 ## ⚠️ **REGLAS CRÍTICAS:**
