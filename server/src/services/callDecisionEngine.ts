@@ -347,23 +347,24 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 - Detalle de coberturas → "Le llamaremos con la respuesta"
 - **CRÍTICO**: Si Carlos dice "no tengo acceso" → ES "LLam gestión comerc"
 
-### ⚠️ **"REENVÍO AGENTES HUMANOS NO QUIERE IA"**
+### ⚠️ **"REENVÍO AGENTES HUMANOS NO QUIERE IA"** ⚠️ CRÍTICO
 **DETECTAR SI cliente rechaza explícitamente la IA:**
-- Frases cliente: "no quiero hablar con una máquina", "quiero hablar con una persona", "pásame con un humano", "no quiero robot", "no me gusta la IA"
-- Agente responde: "le paso con uno de nuestros compañeros", "claro, le transfiero"
+- Frases cliente: "no quiero hablar con una máquina", "quiero hablar con una persona", "pásame con un humano", "no quiero robot", "prefiero una persona real", "no me gusta la IA"
+- Agente responde: "le paso con uno de nuestros compañeros", "claro, le transfiero", "en un momento le paso"
 - **RESULTADO**: type: "Llamada gestión comercial", reason: "Reenvío agentes humanos no quiere IA"
 
-### ⚠️ **"DATOS INCOMPLETOS"**
+### ⚠️ **"DATOS INCOMPLETOS"** ⚠️ CRÍTICO
 **DETECTAR SI cliente no tiene datos necesarios para completar gestión:**
-- Cliente dice: "no tengo", "no sé", "no me acuerdo", "no lo tengo aquí", "tengo que buscarlo"
-- Agente: "sin esos datos no puedo", "necesito que me proporcione", "llame cuando lo tenga"
-- La gestión NO se completa en esa llamada por falta de información
+- Cliente dice: "no tengo", "no sé", "no me acuerdo", "no lo tengo aquí", "tengo que buscarlo", "no me acuerdo ahora mismo"
+- Agente: "sin esos datos no puedo", "necesito que me proporcione", "vuelva a llamar cuando tenga"
+- La gestión NO se puede completar en la misma llamada por falta de datos
 - **RESULTADO**: type: "Modificación póliza emitida", reason: "Datos incompletos"
 
-### ⚠️ **"REENVÍO AGENTES HUMANOS NO TOMADOR"** 
+### ⚠️ **"REENVÍO AGENTES HUMANOS NO TOMADOR"** ⚠️ CRÍTICO
 **DETECTAR SI llamante pregunta por póliza ajena:**
-- Cliente menciona: "mi hermano", "mi esposa", "mi hijo", "la póliza de [otra persona]"
-- Llamante identificado ≠ Tomador de la póliza consultada
+- Cliente menciona: "mi hermano", "mi esposa", "mi hijo", "mi padre", "mi madre", "la póliza de [nombre]", "es sobre la póliza del coche de [persona]"
+- Cliente identificado ≠ Propietario de la póliza consultada
+- Llamante pregunta por datos de póliza ajena
 - **RESULTADO**: type: "Llamada gestión comercial", reason: "Reenvío agentes humanos no tomador"
 
 ### 📄 **SOLICITUD DUPLICADO PÓLIZA**:
@@ -447,6 +448,55 @@ EJEMPLO:
 
 ### SI ES CLIENTE NUEVO (sin tool_results o sin matches):
 - ✅ Crear cliente con datos extraídos de conversación
+
+## 🎯 **EJEMPLOS CRÍTICOS:**
+
+**EJEMPLO 1 - REENVÍO NO QUIERE IA (CORRECTO)** ⚠️:
+USER: "No, pero en serio, por favor. ¿No me puedes pasar con una persona? De verdad, no quiero hablar con una máquina, quiero hablar con una persona."
+AGENT: "Claro. En este caso le paso con uno de nuestros compañeros..."
+**CLASIFICACIÓN**: type: "Llamada gestión comercial", reason: "Reenvío agentes humanos no quiere IA"
+
+**EJEMPLO 2 - DATOS INCOMPLETOS (CORRECTO)** ⚠️:
+USER: "Quiero cambiar el DNI de mi esposa en la póliza"
+AGENT: "Necesito el DNI actual y el nuevo DNI"
+USER: "No me acuerdo del DNI actual ahora mismo"
+AGENT: "Sin el DNI actual no puedo hacer la modificación. Llame cuando lo tenga"
+**CLASIFICACIÓN**: type: "Modificación póliza emitida", reason: "Datos incompletos"
+
+**EJEMPLO 3 - REENVÍO NO TOMADOR (CORRECTO)** ⚠️:
+USER: "Mi nombre es Javier, mi DNI es 03-473-587-N"
+AGENT: "[Tool Call: identificar_cliente]" [encuentra a Javier]
+USER: "Es sobre la póliza del coche de mi hermano. Se llama Jesús, el DNI de mi hermano es 03 472 505 B y necesito información sobre las coberturas"
+**CLASIFICACIÓN**: type: "Llamada gestión comercial", reason: "Reenvío agentes humanos no tomador"
+**RAZÓN**: Javier (identificado) ≠ Jesús (propietario póliza consultada)
+
+**EJEMPLO 4 - CONSULTA CLIENTE RESUELTA (CORRECTO)**:
+USER: "¿Cuál es mi número de póliza?"
+AGENT: "Es AU0420225024935. Guarda este número: te lo pedirán en gestiones y partes"
+**CLASIFICACIÓN**: type: "Llamada gestión comercial", reason: "Consulta cliente"
+
+**EJEMPLO 5 - GESTIÓN NO RESUELTA - IMPORTES (CORRECTO)**:
+USER: "quiero saber el importe de mis cuotas para las polizas"
+AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y uno de mis compañeros se pondrá en contacto para revisarlo con usted"
+**CLASIFICACIÓN**: type: "Llamada gestión comercial", reason: "LLam gestión comerc"
+**RAZÓN**: Carlos NO puede proporcionar importes/cuotas específicos
+
+**EJEMPLO 6 - GESTIÓN NO RESUELTA - COBERTURAS (CORRECTO)**:
+USER: "¿Mi póliza cubre filtraciones de agua?"
+AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y uno de mis compañeros se pondrá en contacto"
+**CLASIFICACIÓN**: type: "Llamada gestión comercial", reason: "LLam gestión comerc"
+
+## ⚠️ **REGLAS CRÍTICAS:**
+
+1. **PRIORIZA EL RECHAZO A IA** - Si cliente dice "no quiero máquina/robot/IA" → ES "Reenvío agentes humanos no quiere IA"
+2. **PRIORIZA DATOS INCOMPLETOS** - Si cliente no tiene datos necesarios → ES "Datos incompletos"
+3. **PRIORIZA NO TOMADOR** - Si llamante identificado ≠ propietario póliza consultada → ES "Reenvío agentes humanos no tomador"
+4. **DETECTA GESTIÓN NO RESUELTA** - Si Carlos dice "no tengo acceso" o "tomo nota" → ES "LLam gestión comerc"
+5. **DETECTA MENCIONES DE TERCEROS** - Si dice "mi hermano/esposa/hijo" + "póliza/seguro" → ES "Reenvío agentes humanos no tomador"
+6. **CONSULTAS DE IMPORTES/CUOTAS** - Si pregunta sobre importes y Carlos no puede responder → ES "LLam gestión comerc"
+7. **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
+8. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
+9. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
 
 ---
 
