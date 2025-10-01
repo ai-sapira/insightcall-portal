@@ -132,6 +132,12 @@ Otros casos que requieren transferencia:
 **TODOS ESTOS CASOS:**
 - **Tipo**: "Llamada gestión comercial" + **Motivo**: "Reenvío agentes humanos"
 
+### ⚠️ **REGLA SIMPLE: SI TRANSFIERE = REENVÍO AGENTES HUMANOS**
+**Cualquier caso donde el agente dice "le paso con mis compañeros" o "le transfiero":**
+- **SIEMPRE** crear: "Llamada gestión comercial" + "Reenvío agentes humanos"
+- **NO importa** el motivo original (pago recibo, correo ordinario, etc.)
+- **La transferencia** es lo que determina el tipo de ticket
+
 ### **DATOS INCOMPLETOS** ⚠️ CRÍTICO
 Cliente solicita algo pero NO tiene la información necesaria:
 - Cliente dice: "no tengo", "no sé", "no me acuerdo", "no lo tengo aquí", "tengo que buscarlo", "no me acuerdo ahora mismo"
@@ -274,6 +280,7 @@ Cliente solicita recibos para declaración fiscal:
 - Frases: "recibos para renta", "declaración fiscal", "ejercicio anterior"
 - **Tipo**: "Solicitud duplicado póliza" + **Motivo**: "Información recibos declaración renta"
 
+
 ## 📋 **INFORMACIÓN DEL CLIENTE:**
 {{clientData}}
 
@@ -351,23 +358,21 @@ AGENT: "Registramos el cambio de periodicidad"
 3. **DATOS INCOMPLETOS** - Si cliente no tiene datos necesarios → "Datos incompletos"
 
 ### **FASE 2: TRANSFERENCIAS (SEGUNDA PRIORIDAD)**
-4. **PAGO RECIBO** - Si quiere pagar recibo → "Reenvío agentes humanos"
-5. **DUPLICADO CORREO** - Si quiere duplicado por correo → "Reenvío agentes humanos"
-6. **ASISTENCIA CARRETERA** - Si necesita grúa → "Siniestros"
-7. **OTROS REENVÍOS** - Energía, quejas, temas prohibidos → "Reenvío agentes humanos"
+4. **CUALQUIER TRANSFERENCIA** - Si agente dice "le paso/transfiero" → "Reenvío agentes humanos"
+5. **ASISTENCIA CARRETERA** - Si necesita grúa → "Siniestros"
 
 ### **FASE 3: FRACCIONAMIENTO (TERCERA PRIORIDAD)**
-8. **FRACCIONAMIENTO CRÍTICO** - Si pago anual → fraccionado → "Llamada gestión comercial"
-9. **CAMBIO PAGO NORMAL** - Si no es desde anual → "Modificación póliza emitida"
+6. **FRACCIONAMIENTO CRÍTICO** - Si pago anual → fraccionado → "Llamada gestión comercial"
+7. **CAMBIO PAGO NORMAL** - Si no es desde anual → "Modificación póliza emitida"
 
 ### **FASE 4: CONSULTAS (CUARTA PRIORIDAD)**
-10. **CONSULTA ESPECÍFICA** - Solo 5 consultas Y Carlos responde → "Consulta cliente"
-11. **GESTIÓN NO RESUELTA** - Carlos dice "no tengo acceso" → "LLam gestión comerc"
+8. **CONSULTA ESPECÍFICA** - Solo 5 consultas Y Carlos responde → "Consulta cliente"
+9. **GESTIÓN NO RESUELTA** - Carlos dice "no tengo acceso" → "LLam gestión comerc"
 
 ### **FASE 5: GESTIONES NORMALES**
-12. **NUEVA CONTRATACIÓN** - Cliente quiere contratar → "Nueva contratación de seguros"
-13. **MODIFICACIONES** - Cambios en póliza → "Modificación póliza emitida"
-14. **DUPLICADOS** - Email, tarjeta, recibos → "Solicitud duplicado póliza"
+10. **NUEVA CONTRATACIÓN** - Cliente quiere contratar → "Nueva contratación de seguros"
+11. **MODIFICACIONES** - Cambios en póliza → "Modificación póliza emitida"
+12. **DUPLICADOS** - Solo email, tarjeta, recibos → "Solicitud duplicado póliza"
 
 ### **REGLAS GENERALES:**
 - **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
