@@ -374,7 +374,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
               {/* ACCIONES */}
               <TabsContent value="actions" className="m-0 h-full overflow-hidden">
                 <ScrollArea className="h-full max-h-[calc(100vh-200px)]">
-                  <div className="p-6 pb-8">
+                  <div className="p-6 pb-16">
                     <CallActionsSection 
                       aiAnalysis={call.aiAnalysis}
                       ticketsCreated={call.tickets?.length || 0}

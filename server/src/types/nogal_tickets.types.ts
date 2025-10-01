@@ -55,7 +55,6 @@ export type NogalMotivoGestion =
   | 'Siniestros'
   | 'Retención cliente'
   | 'LLam gestión comerc'
-  | 'Pago de Recibo'
   | 'Consulta cliente'
   | 'Cambio forma de pago'
   | 'Reenvío siniestros'
@@ -64,7 +63,6 @@ export type NogalMotivoGestion =
   | 'Reenvío agentes humanos no tomador'
   | 'Baja Cliente BBDD'
   | 'Reclamación atención al cliente'
-  | 'Correo ordinario'
   | 'Duplicado Tarjeta'
   | 'Email'
   | 'Información recibos declaración renta'
@@ -170,9 +168,9 @@ export const GEMINI_TO_NOGAL_MAPPING: Record<string, {
 }> = {
   'DEVOLUCION_RECIBOS': {
     tipoIncidencia: 'Llamada gestión comercial',
-    motivoGestion: 'Pago de Recibo',
-    tipoCreacion: 'Manual / Automática',
-    esExclusivaIA: false
+    motivoGestion: 'Reenvío agentes humanos',
+    tipoCreacion: 'Exclusiva IA',
+    esExclusivaIA: true
   },
   'ANULACION_POLIZA': {
     tipoIncidencia: 'Retención cliente',

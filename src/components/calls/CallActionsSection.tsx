@@ -101,7 +101,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
   const totalActions = tickets.length + rellamadas.length + clientes.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       
       {/* HEADER - Resumen Ejecutivo */}
       <Card className="border-2">

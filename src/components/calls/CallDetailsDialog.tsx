@@ -415,7 +415,7 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
             </div>
 
             <ScrollArea className="flex-1 bg-zinc-100/50">
-              <div className="p-6 space-y-6">
+              <div className="p-6 pb-12 space-y-6">
               <TabsContent value="overview" className="mt-0 space-y-6">
                 <Card className="shadow-sm">
                   <CardHeader className="p-4">

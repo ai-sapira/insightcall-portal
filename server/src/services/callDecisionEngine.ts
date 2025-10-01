@@ -322,13 +322,13 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 
 ### 🏢 **LLAMADA GESTIÓN COMERCIAL**:
 - **LLam gestión comerc**: Gestión sobre póliza (no renovación ni anulación)
-- **Pago de Recibo**: Realizar pago pendiente de recibo
 - **Consulta cliente**: SOLO consultas específicas que Carlos SÍ puede resolver (fecha efecto, número póliza, compañía, forma pago, próximo recibo)
 - **Cambio forma de pago**: Desde anual a fraccionado
 - **Reenvío siniestros**: Cuando se transfiere a cola siniestros
 - **Reenvío agentes humanos**: Transferir a humanos (general)
 - **Reenvío agentes humanos no quiere IA**: Cliente rechaza IA explícitamente
 - **Reenvío agentes humanos no tomador**: Llamante no es el tomador
+- ⚠️ **PAGO DE RECIBO**: SIEMPRE es "Reenvío agentes humanos" (transferencia obligatoria)
 
 ## 🚨 **DETECCIÓN CRÍTICA DE CASOS ESPECIALES:**
 
@@ -368,10 +368,10 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 - **RESULTADO**: type: "Llamada gestión comercial", reason: "Reenvío agentes humanos no tomador"
 
 ### 📄 **SOLICITUD DUPLICADO PÓLIZA**:
-- **Correo ordinario**: Envío por correo postal
 - **Duplicado Tarjeta**: Tarjetas seguro decesos/salud
 - **Email**: Envío por correo electrónico
 - **Información recibos declaración renta**: Recibos para declaración renta
+- ⚠️ **CORREO ORDINARIO**: SIEMPRE es "Reenvío agentes humanos" (transferencia obligatoria)
 
 ### 🚨 **OTROS SERVICIOS**:
 - **Llamada asistencia en carretera** + **Siniestros**: Cliente necesita grúa
@@ -486,6 +486,45 @@ USER: "¿Mi póliza cubre filtraciones de agua?"
 AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y uno de mis compañeros se pondrá en contacto"
 **CLASIFICACIÓN**: type: "Llamada gestión comercial", reason: "LLam gestión comerc"
 
+## 📝 **CÓMO ESCRIBIR EL ANÁLISIS NARRATIVO:**
+
+### **ESTRUCTURA OBLIGATORIA del processingRecommendation:**
+
+**INICIO**: "El usuario contactó para [motivo principal de la llamada]."
+
+**DESARROLLO**: "Durante la conversación, [describir cronológicamente qué pasó]:
+- Primero [acción inicial del cliente]
+- El agente [respuesta del agente] 
+- Luego [siguiente desarrollo]
+- [Mencionar datos proporcionados: nombre, DNI, email, etc.]"
+
+**RESULTADO**: "[Explicar qué se logró o por qué se transfirió]:
+- Se completó [gestión] exitosamente
+- O: Se transfirió a agente humano porque [motivo específico]
+- O: No se pudo completar porque [razón específica]"
+
+**CLASIFICACIÓN**: "Por tanto, se clasifica como [tipo] + [motivo] debido a [justificación]."
+
+### **EJEMPLOS DE NARRATIVAS:**
+
+**EJEMPLO DUPLICADO EMAIL:**
+"El usuario contactó para solicitar un duplicado de su póliza por correo electrónico. Durante la conversación, se identificó como Manuel García con DNI 12345678A y proporcionó su email manuel@email.com como destino para el envío. El agente confirmó sus datos y procedió a enviar el duplicado digitalmente. La gestión se completó exitosamente sin necesidad de intervención humana. Por tanto, se clasifica como Solicitud duplicado póliza + Email debido a que la gestión fue resuelta directamente por el agente virtual."
+
+**EJEMPLO TRANSFERENCIA:**
+"El usuario contactó para solicitar un duplicado de su póliza por correo postal. Durante la conversación, proporcionó sus datos de identificación correctamente, pero cuando especificó que prefería el envío por correo ordinario, el agente le informó que debía transferirlo a un compañero humano para gestionar este tipo de envío. La llamada se transfirió exitosamente. Por tanto, se clasifica como Llamada gestión comercial + Reenvío agentes humanos debido a que el duplicado por correo postal requiere gestión humana según protocolo."
+
+**EJEMPLO MODIFICACIÓN:**
+"El usuario contactó para cambiar su dirección postal en la póliza. Durante la conversación, se identificó correctamente como María López con DNI 98765432B y proporcionó su nueva dirección: Calle Nueva 123, 28001 Madrid. El agente verificó que era la tomadora de la póliza AU0420225024935 y registró el cambio exitosamente. La modificación quedó procesada para actualización en el sistema. Por tanto, se clasifica como Modificación póliza emitida + Cambio dirección postal debido a que se completó la gestión con todos los datos necesarios."
+
+**EJEMPLO RECHAZO IA:**
+"El usuario contactó inicialmente para consultar sobre su póliza, pero durante la conversación expresó claramente que no deseaba hablar con una máquina. Específicamente dijo 'no quiero hablar con un robot, pásame con una persona real'. El agente virtual respetó su preferencia y le transfirió inmediatamente con un compañero humano. La transferencia se realizó sin solicitar más información. Por tanto, se clasifica como Llamada gestión comercial + Reenvío agentes humanos no quiere IA debido a que el cliente rechazó explícitamente la atención automatizada."
+
+**EJEMPLO CONSULTA RESUELTA:**
+"El usuario contactó para conocer su número de póliza. Durante la conversación, se identificó como Juan Pérez con DNI 11223344C y el agente pudo localizar su información inmediatamente. El agente le proporcionó el número de póliza AU0420225024935 y le explicó que debía guardarlo para futuras gestiones. La consulta se resolvió completamente en la misma llamada. Por tanto, se clasifica como Llamada gestión comercial + Consulta cliente debido a que el agente virtual pudo responder la pregunta específica del cliente."
+
+**EJEMPLO DATOS INCOMPLETOS:**
+"El usuario contactó para cambiar el número de cuenta bancaria de su póliza. Durante la conversación, se identificó correctamente pero cuando el agente le solicitó el nuevo IBAN, el cliente indicó que no lo tenía disponible en ese momento y que tendría que buscarlo. El agente le explicó que sin el nuevo número de cuenta no podía procesar el cambio y le pidió que volviera a llamar cuando tuviera la información completa. Por tanto, se clasifica como Modificación póliza emitida + Datos incompletos debido a que la gestión no se pudo completar por falta de información necesaria."
+
 ## ⚠️ **REGLAS CRÍTICAS:**
 
 1. **PRIORIZA EL RECHAZO A IA** - Si cliente dice "no quiero máquina/robot/IA" → ES "Reenvío agentes humanos no quiere IA"
@@ -497,6 +536,7 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
 7. **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
 8. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
 9. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
+10. **ESCRIBE NARRATIVA FLUIDA** - Usa el formato narrativo obligatorio para processingRecommendation
 
 ---
 
@@ -531,7 +571,7 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
   "incidentAnalysis": {
     "primaryIncident": {
       "type": "Nueva contratación de seguros|Modificación póliza emitida|Llamada gestión comercial|Solicitud duplicado póliza|Llamada asistencia en carretera|Retención cliente|Baja cliente en BBDD|Reclamación cliente regalo",
-      "reason": "Contratación Póliza|Póliza anterior suspensión de garantías|Atención al cliente - Modif datos póliza|Cambio nº de cuenta|Cambio fecha de efecto|Cambio forma de pago|Modificación nº asegurados|Cambio dirección postal|Modificación coberturas|Cesión de derechos|Cesión de derechos datos incompletos|Corrección datos erróneos en póliza|Datos incompletos|LLam gestión comerc|Pago de Recibo|Consulta cliente|Reenvío siniestros|Reenvío agentes humanos|Reenvío agentes humanos no quiere IA|Reenvío agentes humanos no tomador|Correo ordinario|Duplicado Tarjeta|Email|Información recibos declaración renta|Siniestros|Retención cliente|Baja Cliente BBDD|Reclamación atención al cliente",
+      "reason": "Contratación Póliza|Póliza anterior suspensión de garantías|Atención al cliente - Modif datos póliza|Cambio nº de cuenta|Cambio fecha de efecto|Cambio forma de pago|Modificación nº asegurados|Cambio dirección postal|Modificación coberturas|Cesión de derechos|Cesión de derechos datos incompletos|Corrección datos erróneos en póliza|Datos incompletos|LLam gestión comerc|Consulta cliente|Reenvío siniestros|Reenvío agentes humanos|Reenvío agentes humanos no quiere IA|Reenvío agentes humanos no tomador|Duplicado Tarjeta|Email|Información recibos declaración renta|Siniestros|Retención cliente|Baja Cliente BBDD|Reclamación atención al cliente",
       "ramo": "HOGAR|AUTO|VIDA|DECESOS|SALUD|OTROS SOLO para nuevas contrataciones",
       "description": "descripción clara de qué necesita el cliente",
       "confidence": 0.95,
@@ -570,7 +610,7 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
   },
   "metadata": {
     "confidence": 0.95,
-    "processingRecommendation": "explicación de qué hacer",
+    "processingRecommendation": "NARRATIVA DETALLADA: El usuario contactó para [motivo principal]. Durante la conversación [describir qué pasó paso a paso]. [Explicar el resultado final y por qué se clasificó así]. [Mencionar datos relevantes extraídos].",
     "warnings": ["advertencias si las hay"],
     "toolResultsFound": true,
     "clientSearchResults": "resumen de lo encontrado en tool_results"
