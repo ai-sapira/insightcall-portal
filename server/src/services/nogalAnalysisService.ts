@@ -39,29 +39,98 @@ Analiza conversaciones telefónicas completas y clasifícalas según los tipos e
 ## 📋 **METODOLOGÍA (SIGUE ESTE ORDEN):**
 
 1. **LEE TODA LA CONVERSACIÓN** de principio a fin
-2. **IDENTIFICA QUÉ PASÓ REALMENTE** - ¿Se resolvió o no? ¿Por qué?
-3. **CLASIFICA SEGÚN EL RESULTADO FINAL**, no la solicitud inicial
+2. **DETECTA MÚLTIPLES GESTIONES** - ¿Hay varios temas independientes?
+3. **IDENTIFICA QUÉ PASÓ REALMENTE** - ¿Se resolvió o no? ¿Por qué?
+4. **CLASIFICA CADA GESTIÓN** según el resultado final, no la solicitud inicial
+
+## 🔄 **DETECCIÓN DE MÚLTIPLES GESTIONES:**
+
+### **SEÑALES DE MÚLTIPLES TEMAS:**
+- **Conectores**: "Y también", "Además", "Por otro lado", "Otra cosa", "Aparte de eso"
+- **Diferentes pólizas**: "del coche" + "del hogar", "auto" + "vida"
+- **Diferentes tipos**: "contratar" + "modificar", "duplicado" + "cambio"
+- **Múltiples solicitudes**: "quiero X, Y también Y, y además Z"
+
+### **EJEMPLOS DE MÚLTIPLES GESTIONES:**
+**EJEMPLO MÚLTIPLE 1:**
+USER: "Quiero cambiar mi cuenta bancaria Y también el duplicado del hogar por email"
+→ GESTIÓN 1: "Modificación póliza emitida" + "Cambio nº de cuenta"
+→ GESTIÓN 2: "Solicitud duplicado póliza" + "Email"
+
+**EJEMPLO MÚLTIPLE 2:**
+USER: "Necesito contratar un seguro de vida Y cambiar la dirección del coche"
+→ GESTIÓN 1: "Nueva contratación de seguros" + "Contratación Póliza" + Ramo: "VIDA"
+→ GESTIÓN 2: "Modificación póliza emitida" + "Cambio dirección postal"
+
+### **REGLAS PARA MÚLTIPLES GESTIONES:**
+1. **Cada gestión independiente** = Un ticket separado
+2. **Aplicar jerarquía de prioridad** a cada gestión por separado
+3. **⚠️ CASOS CRÍTICOS PREVALECEN** - Si hay rechazo IA, no tomador o datos incompletos → Solo crear ese ticket (anula múltiples gestiones)
+4. **Gestiones sobre misma póliza** = Tickets separados pero relacionados
+5. **Máximo 3 gestiones** - Si hay más, agrupar las menos importantes en "LLam gestión comerc"
+
+### **EJEMPLOS DE PRIORIDAD EN MÚLTIPLES GESTIONES:**
+
+**CASO CRÍTICO PREVALECE:**
+USER: "No quiero hablar con máquina, quiero cambiar cuenta Y duplicado por email"
+→ RESULTADO: Solo "Reenvío agentes humanos no quiere IA" (anula las otras gestiones)
+
+**MÚLTIPLES GESTIONES NORMALES:**
+USER: "Quiero cambiar mi cuenta bancaria Y también el duplicado por email"
+→ GESTIÓN 1: "Modificación póliza emitida" + "Cambio nº de cuenta"
+→ GESTIÓN 2: "Solicitud duplicado póliza" + "Email"
 
 ## 🎯 **TIPOS PRINCIPALES:**
 
-### **NUEVA CONTRATACIÓN** 
-Cliente quiere contratar un seguro nuevo:
-- Frases: "nueva contratación", "quiero contratar", "necesito un seguro"
-- Agente: "un compañero se pondrá en contacto para presupuesto"
-- **Tipo**: "Nueva contratación de seguros" + **Motivo**: "Contratación Póliza" + **Ramo**: según tipo
 
-### **REENVÍO AGENTES HUMANOS NO QUIERE IA** ⚠️ CRÍTICO
+## 🔄 **TRANSFERENCIAS A AGENTES HUMANOS** ⚠️ TODOS CREAN TICKET
+
+### **REENVÍO AGENTES HUMANOS NO QUIERE IA** ⚠️ ESPECÍFICO
 Cliente RECHAZA explícitamente hablar con IA:
 - Frases cliente: "no quiero hablar con una máquina", "quiero hablar con una persona", "pásame con un humano", "no quiero robot", "prefiero una persona real", "no me gusta la IA"
 - Agente responde: "le paso con uno de nuestros compañeros", "claro, le transfiero", "en un momento le paso"
 - **Tipo**: "Llamada gestión comercial" + **Motivo**: "Reenvío agentes humanos no quiere IA"
 
-### **REENVÍO AGENTES HUMANOS NO TOMADOR** ⚠️ CRÍTICO
+### **REENVÍO AGENTES HUMANOS NO TOMADOR** ⚠️ ESPECÍFICO
 Cliente llama por póliza de OTRA PERSONA:
 - Frases cliente: "mi hermano", "mi esposa", "mi hijo", "mi padre", "mi madre", "la póliza de [nombre]", "es sobre la póliza del coche de [persona]"
 - Cliente identificado ≠ Propietario de la póliza consultada
 - Llamante pregunta por datos de póliza ajena
 - **Tipo**: "Llamada gestión comercial" + **Motivo**: "Reenvío agentes humanos no tomador"
+
+### **REENVÍO AGENTES HUMANOS** ⚠️ GENÉRICO
+Otros casos que requieren transferencia:
+
+**PAGO DE RECIBO:**
+- Frases: "quiero pagar recibo", "tengo recibo pendiente", "pago atrasado"
+- Agente: "le transfiero con atención al cliente"
+
+**DUPLICADO POR CORREO ORDINARIO:**
+- Frases: "duplicado por correo", "envío postal", "correo ordinario"
+- Agente: "le paso con mis compañeros"
+
+**NO ES CLIENTE:**
+- Frases: "soy proveedor", "llamo de [compañía]", "para [trabajador específico]"
+- Agente: "le paso con mis compañeros"
+
+**ENERGÍA/SEGURIDAD:**
+- Frases: "sobre energía", "seguridad", "servicios al margen de seguros"
+- Agente: "le paso con mis compañeros"
+
+**RECLAMACIÓN/QUEJA:**
+- Frases: "quiero reclamar", "poner una queja", "estoy descontento"
+- Agente: "le paso con mis compañeros"
+
+**COMUNICACIÓN NO ENTENDIDA:**
+- Frases: "recibí email/SMS", "no entiendo comunicación", "me genera dudas"
+- Agente: "le paso con mis compañeros"
+
+**TEMAS PROHIBIDOS:**
+- Frases: "cripto", "inversiones", "hipotecas", "fiscalidad", "política", "deudas"
+- Agente: "derivo a agente humano"
+
+**TODOS ESTOS CASOS:**
+- **Tipo**: "Llamada gestión comercial" + **Motivo**: "Reenvío agentes humanos"
 
 ### **DATOS INCOMPLETOS** ⚠️ CRÍTICO
 Cliente solicita algo pero NO tiene la información necesaria:
@@ -88,10 +157,122 @@ Carlos NO puede resolver consultas fuera de su alcance:
 - **CRÍTICO**: Si Carlos NO puede dar la respuesta específica → ES "LLam gestión comerc"
 - **Tipo**: "Llamada gestión comercial" + **Motivo**: "LLam gestión comerc"
 
-### **DUPLICADO DE PÓLIZA**
-Cliente solicita copia de su póliza:
-- Por email: **Tipo**: "Solicitud duplicado póliza" + **Motivo**: "Email"
-- Por correo: **Tipo**: "Solicitud duplicado póliza" + **Motivo**: "Correo ordinario"
+## 🏗️ **NUEVA CONTRATACIÓN DE SEGUROS**
+
+### **CONTRATACIÓN PÓLIZA**
+Cliente quiere contratar un seguro nuevo sin incidencias pendientes:
+- Frases: "nueva contratación", "quiero contratar", "necesito un seguro"
+- Agente: "un compañero se pondrá en contacto para presupuesto"
+- **Tipo**: "Nueva contratación de seguros" + **Motivo**: "Contratación Póliza" + **Ramo**: según tipo
+
+### **PÓLIZA ANTERIOR SUSPENSIÓN DE GARANTÍAS**
+Cliente quiere contratar usando reserva de prima:
+- Frases: "tengo suspensión de garantías", "reserva de prima", "póliza suspendida"
+- **Tipo**: "Nueva contratación de seguros" + **Motivo**: "Póliza anterior suspensión de garantías"
+
+## 🔧 **MODIFICACIÓN PÓLIZA EMITIDA**
+
+### **ATENCIÓN AL CLIENTE - MODIF DATOS PÓLIZA**
+Cliente quiere modificar datos que no afectan prima:
+- Frases: "cambiar nombre", "modificar apellido", "corregir DNI"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Atención al cliente - Modif datos póliza"
+
+### **CAMBIO Nº DE CUENTA**
+Cliente quiere cambiar IBAN para domiciliación:
+- Frases: "cambiar cuenta bancaria", "nuevo IBAN", "modificar domiciliación"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio nº de cuenta"
+
+### **CAMBIO FECHA DE EFECTO**
+Cliente quiere modificar fecha de entrada en vigor:
+- Frases: "cambiar fecha de efecto", "modificar fecha entrada vigor"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio fecha de efecto"
+
+### **CAMBIO FORMA DE PAGO - REGLAS ESPECÍFICAS** ⚠️ CRÍTICO
+
+**SI PAGO ACTUAL NO ES ANUAL (trimestral, semestral, mensual):**
+- Frases: "tengo pago mensual/trimestral/semestral", "quiero cambiar periodicidad"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio forma de pago"
+
+**SI PAGO ACTUAL ES ANUAL y quiere FRACCIONAR:**
+- Frases: "tengo pago anual", "quiero mensual/trimestral/semestral"
+- **Tipo**: "Llamada gestión comercial" + **Motivo**: "Cambio forma de pago"
+
+### **MODIFICACIÓN Nº ASEGURADOS**
+Cliente quiere incluir/excluir asegurados:
+- Frases: "añadir mi hijo", "incluir asegurado", "excluir de la póliza"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Modificación nº asegurados"
+
+### **CAMBIO DIRECCIÓN POSTAL**
+Cliente quiere cambiar dirección postal:
+- Frases: "cambiar dirección", "nueva dirección postal", "modificar domicilio"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio dirección postal"
+
+### **MODIFICACIÓN COBERTURAS**
+Cliente quiere cambiar coberturas de su póliza:
+- Frases: "cambiar cobertura", "de todo riesgo a terceros", "quitar/incluir cobertura"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Modificación coberturas"
+
+### **CESIÓN DE DERECHOS DATOS INCOMPLETOS**
+Cliente solicita cesión para préstamo hipotecario pero no tiene datos:
+- Frases: "cesión de derechos", "préstamo hipotecario" + "no tengo datos"
+- Agente: "necesito datos del préstamo, vuelva a llamar cuando los tenga"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cesión de derechos datos incompletos"
+
+### **CESIÓN DE DERECHOS**
+Cliente solicita cesión con datos completos:
+- Frases: "cesión de derechos", "préstamo hipotecario" + proporciona datos completos
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cesión de derechos"
+
+### **CORRECCIÓN DATOS ERRÓNEOS EN PÓLIZA**
+Cliente detecta errores en su póliza:
+- Frases: "hay un error en mi póliza", "datos incorrectos", "corregir información"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Corrección datos erróneos en póliza"
+
+## 🚨 **OTROS SERVICIOS**
+
+### **LLAMADA ASISTENCIA EN CARRETERA**
+Cliente necesita grúa o asistencia:
+- Frases: "necesito grúa", "tengo avería", "accidente", "asistencia carretera"
+- Agente: "le transfiero con siniestros"
+- **Tipo**: "Llamada asistencia en carretera" + **Motivo**: "Siniestros"
+
+### **RETENCIÓN CLIENTE**
+Cliente quiere anular o dar de baja póliza:
+- Frases: "quiero anular", "dar de baja", "cancelar póliza", "no renovar"
+- **Tipo**: "Retención cliente" + **Motivo**: "Retención cliente"
+
+### **BAJA CLIENTE EN BBDD**
+Cliente no quiere recibir más llamadas:
+- Frases: "no quiero llamadas", "eliminar mis datos", "baja de base de datos"
+- **Tipo**: "Baja cliente en BBDD" + **Motivo**: "Baja Cliente BBDD"
+
+### **RECLAMACIÓN CLIENTE REGALO**
+Cliente reclama regalo no recibido:
+- Frases: "no recibí regalo", "regalo prometido", "regalo por recomendación"
+- **Tipo**: "Reclamación cliente regalo" + **Motivo**: "Reclamación atención al cliente"
+
+### **REENVÍO SINIESTROS**
+Cliente expone tema que corresponde a siniestros:
+- Frases: "siniestro", "parte", "daños", "accidente ya ocurrido"
+- Agente: "le transfiero con siniestros"
+- **Tipo**: "Llamada gestión comercial" + **Motivo**: "Reenvío siniestros"
+
+## 📄 **SOLICITUD DUPLICADO PÓLIZA**
+
+### **DUPLICADO POR EMAIL**
+Cliente solicita duplicado por correo electrónico:
+- Frases: "duplicado por email", "envío electrónico"
+- **Tipo**: "Solicitud duplicado póliza" + **Motivo**: "Email"
+
+### **DUPLICADO TARJETA**
+Cliente solicita duplicado de tarjetas de seguro:
+- Frases: "duplicado tarjeta", "tarjeta decesos", "tarjeta salud"
+- **Tipo**: "Solicitud duplicado póliza" + **Motivo**: "Duplicado Tarjeta"
+
+### **INFORMACIÓN RECIBOS DECLARACIÓN RENTA**
+Cliente solicita recibos para declaración fiscal:
+- Frases: "recibos para renta", "declaración fiscal", "ejercicio anterior"
+- **Tipo**: "Solicitud duplicado póliza" + **Motivo**: "Información recibos declaración renta"
 
 ## 📋 **INFORMACIÓN DEL CLIENTE:**
 {{clientData}}
@@ -150,17 +331,49 @@ USER: "¿Mi póliza cubre filtraciones de agua?"
 AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y uno de mis compañeros se pondrá en contacto"
 **CLASIFICACIÓN**: "Llamada gestión comercial" + "LLam gestión comerc"
 
-## ⚠️ **REGLAS CRÍTICAS:**
+**EJEMPLO 8 - FRACCIONAMIENTO ANUAL (CORRECTO)** ⚠️ CRÍTICO:
+USER: "Tengo pago anual y quiero cambiar a mensual"
+AGENT: "Perfecto, procederemos con el fraccionamiento de su póliza"
+**CLASIFICACIÓN**: "Llamada gestión comercial" + "Cambio forma de pago"
+**RAZÓN**: Fraccionamiento desde anual requiere gestión comercial
 
-1. **PRIORIZA EL RECHAZO A IA** - Si cliente dice "no quiero máquina/robot/IA" → ES "Reenvío agentes humanos no quiere IA"
-2. **PRIORIZA DATOS INCOMPLETOS** - Si cliente no tiene datos necesarios → ES "Datos incompletos"
-3. **PRIORIZA NO TOMADOR** - Si llamante identificado ≠ propietario póliza consultada → ES "Reenvío agentes humanos no tomador"
-4. **DETECTA GESTIÓN NO RESUELTA** - Si Carlos dice "no tengo acceso" o "tomo nota" → ES "LLam gestión comerc"
-5. **DETECTA MENCIONES DE TERCEROS** - Si dice "mi hermano/esposa/hijo" + "póliza/seguro" → ES "Reenvío agentes humanos no tomador"
-6. **CONSULTAS DE IMPORTES/CUOTAS** - Si pregunta sobre importes y Carlos no puede responder → ES "LLam gestión comerc"
-7. **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
-8. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
-9. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
+**EJEMPLO 9 - CAMBIO PAGO NO ANUAL (CORRECTO)** ⚠️ CRÍTICO:
+USER: "Tengo pago trimestral y quiero cambiar a semestral"
+AGENT: "Registramos el cambio de periodicidad"
+**CLASIFICACIÓN**: "Modificación póliza emitida" + "Cambio forma de pago"
+**RAZÓN**: Cambio entre fraccionados es modificación directa
+
+## ⚠️ **REGLAS CRÍTICAS DE CLASIFICACIÓN (ORDEN DE PRIORIDAD):**
+
+### **FASE 1: CASOS CRÍTICOS (MÁXIMA PRIORIDAD)**
+1. **RECHAZO A IA** - Si cliente dice "no quiero máquina/robot/IA" → "Reenvío agentes humanos no quiere IA"
+2. **NO TOMADOR** - Si llamante identificado ≠ propietario póliza → "Reenvío agentes humanos no tomador"
+3. **DATOS INCOMPLETOS** - Si cliente no tiene datos necesarios → "Datos incompletos"
+
+### **FASE 2: TRANSFERENCIAS (SEGUNDA PRIORIDAD)**
+4. **PAGO RECIBO** - Si quiere pagar recibo → "Reenvío agentes humanos"
+5. **DUPLICADO CORREO** - Si quiere duplicado por correo → "Reenvío agentes humanos"
+6. **ASISTENCIA CARRETERA** - Si necesita grúa → "Siniestros"
+7. **OTROS REENVÍOS** - Energía, quejas, temas prohibidos → "Reenvío agentes humanos"
+
+### **FASE 3: FRACCIONAMIENTO (TERCERA PRIORIDAD)**
+8. **FRACCIONAMIENTO CRÍTICO** - Si pago anual → fraccionado → "Llamada gestión comercial"
+9. **CAMBIO PAGO NORMAL** - Si no es desde anual → "Modificación póliza emitida"
+
+### **FASE 4: CONSULTAS (CUARTA PRIORIDAD)**
+10. **CONSULTA ESPECÍFICA** - Solo 5 consultas Y Carlos responde → "Consulta cliente"
+11. **GESTIÓN NO RESUELTA** - Carlos dice "no tengo acceso" → "LLam gestión comerc"
+
+### **FASE 5: GESTIONES NORMALES**
+12. **NUEVA CONTRATACIÓN** - Cliente quiere contratar → "Nueva contratación de seguros"
+13. **MODIFICACIONES** - Cambios en póliza → "Modificación póliza emitida"
+14. **DUPLICADOS** - Email, tarjeta, recibos → "Solicitud duplicado póliza"
+
+### **REGLAS GENERALES:**
+- **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
+- **EL RESULTADO FINAL cuenta más** que la solicitud inicial
+- **APLICA LA REGLA MÁS ESPECÍFICA** - Si aplican múltiples casos, usar el de mayor prioridad
+- **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
 
 ## 📞 **RELLAMADAS (SOLO SI ES EXPLÍCITO):**
 
@@ -172,7 +385,9 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
 CONVERSACIÓN A ANALIZAR:
 {{conversation}}
 
-Responde en este formato JSON:
+## 📋 **FORMATO DE RESPUESTA:**
+
+### **PARA UNA SOLA GESTIÓN:**
 {
   "incidenciaPrincipal": {
     "tipo": "tipo exacto de la lista",
@@ -185,8 +400,40 @@ Responde en este formato JSON:
     "incidenciaRelacionada": null
   },
   "incidenciasSecundarias": [],
+  "multipleGestiones": false,
+  "totalGestiones": 1,
   "confidence": 0.95,
   "resumenLlamada": "resumen breve de qué pasó en la conversación",
+  "datosExtraidos": { ... },
+  "notasParaNogal": "información específica para el ticket",
+  "requiereTicket": true,
+  "prioridad": "medium"
+}
+
+### **PARA MÚLTIPLES GESTIONES:**
+{
+  "incidenciaPrincipal": {
+    "tipo": "tipo de la gestión más importante o primera",
+    "motivo": "motivo de la gestión principal",
+    "ramo": "si aplica",
+    "consideraciones": "notas de la gestión principal",
+    "necesidadCliente": "necesidad principal del cliente",
+    "tipoCreacion": "Manual / Automática"
+  },
+  "incidenciasSecundarias": [
+    {
+      "tipo": "tipo de la segunda gestión",
+      "motivo": "motivo de la segunda gestión",
+      "ramo": "si aplica",
+      "consideraciones": "notas específicas de esta gestión",
+      "necesidadCliente": "necesidad específica de esta gestión",
+      "tipoCreacion": "Manual / Automática"
+    }
+  ],
+  "multipleGestiones": true,
+  "totalGestiones": 2,
+  "confidence": 0.95,
+  "resumenLlamada": "resumen de TODAS las gestiones realizadas",
   "datosExtraidos": {
     "nombreCliente": "nombre completo si se menciona explícitamente",
     "telefono": "teléfono si se menciona en cualquier formato",
@@ -201,11 +448,9 @@ Responde en este formato JSON:
       "ramo": "ramo del lead si aplica"
     }
   },
-  "notasParaNogal": "información específica para el ticket",
+  "notasParaNogal": "información específica para TODOS los tickets",
   "requiereTicket": true,
-  "prioridad": "medium",
-  "multipleGestiones": false,
-  "totalGestiones": 1
+  "prioridad": "prioridad más alta de todas las gestiones"
 }
 `;
 

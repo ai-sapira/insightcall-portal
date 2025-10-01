@@ -1,4 +1,4 @@
-const { nogalAnalysisService } = require('./dist/services/nogalAnalysisService.js');
+const { nogalAnalysisService } = require('../dist/services/nogalAnalysisService.js');
 
 // 📝 TRANSCRIPCIONES DE PRUEBA
 const transcripciones = {
