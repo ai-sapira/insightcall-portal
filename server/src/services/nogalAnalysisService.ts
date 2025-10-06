@@ -291,8 +291,14 @@ Cliente solicita recibos para declaración fiscal:
 - **telefono**: Cualquier teléfono mencionado (formatos: 666123456, 666 123 456, +34 666123456)
 - **email**: Cualquier email mencionado
 - **numeroPoliza**: Si menciona número de póliza existente
-- **cuentaBancaria**: Si proporciona nueva cuenta bancaria
+- **cuentaBancaria**: CRÍTICO - Si proporciona nueva cuenta bancaria/IBAN (ES12 3456 7890 1234 5678 9012)
 - **direccion**: Si menciona dirección nueva
+
+**PATRONES DE CUENTAS BANCARIAS A DETECTAR:**
+- IBAN completo: ES12 3456 7890 1234 5678 9012
+- IBAN sin espacios: ES1234567890123456789012
+- Número de cuenta: 1234-5678-90-1234567890
+- Menciones: "mi nueva cuenta es...", "cambiar a la cuenta...", "el IBAN es..."
 
 **IMPORTANTE**: Si hay herramientas con resultados de búsqueda de leads, incluir esa información.
 
@@ -444,7 +450,7 @@ CONVERSACIÓN A ANALIZAR:
     "telefono": "teléfono si se menciona en cualquier formato",
     "email": "email si se menciona",
     "numeroPoliza": "número de póliza si cliente tiene y se habla de gestión existente",
-    "cuentaBancaria": "nueva cuenta bancaria si se proporciona",
+    "cuentaBancaria": "IBAN completo o número de cuenta si se proporciona para cambio",
     "direccion": "nueva dirección si se menciona",
     "leadInfo": {
       "isLead": false,

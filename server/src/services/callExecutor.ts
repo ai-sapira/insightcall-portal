@@ -436,7 +436,7 @@ export class CallExecutor {
   }
 
   /**
-   * Generar notas para ticket
+   * Generar notas para ticket - VERSIÓN MEJORADA PARA TODOS LOS CASOS
    */
   private generateTicketNotes(decision: CallDecision, call: Call): string {
     const incident = decision.incidentAnalysis.primaryIncident;
@@ -444,59 +444,247 @@ export class CallExecutor {
     
     let notes = `${incident.description}\n\n`;
     
-    // Agregar datos específicos según el tipo de incidencia
+    // Normalizar tipos para comparación
     const tipoIncidencia = incident.type?.toLowerCase() || '';
     const motivoIncidencia = incident.reason?.toLowerCase() || '';
     
-    // Para solicitudes de duplicado por email: incluir email de destino
-    if (tipoIncidencia.includes('duplicado') && (motivoIncidencia.includes('email') || motivoIncidencia.includes('correo'))) {
-      if (extractedData.email) {
-        notes += `📧 Email destino: ${extractedData.email}\n`;
-      }
-    }
-    
-    // Para modificaciones de póliza: incluir datos relevantes
+    // === 🔧 MODIFICACIONES DE PÓLIZA ===
     if (tipoIncidencia.includes('modificacion') || tipoIncidencia.includes('cambio')) {
-      if (extractedData.direccion) {
+      
+      // Cambio de cuenta bancaria - CRÍTICO
+      if (motivoIncidencia.includes('cuenta') && extractedData.cuentaBancaria) {
+        notes += `🏦 Nueva cuenta bancaria: ${extractedData.cuentaBancaria}\n`;
+      }
+      
+      // Cambio de dirección postal
+      if (motivoIncidencia.includes('direccion') && extractedData.direccion) {
         notes += `🏠 Nueva dirección: ${extractedData.direccion}\n`;
       }
+      
+      // Cambio de teléfono
       if (extractedData.telefono && extractedData.telefono !== call.caller_id) {
         notes += `📞 Nuevo teléfono: ${extractedData.telefono}\n`;
       }
+      
+      // Cambio de email
       if (extractedData.email) {
         notes += `📧 Nuevo email: ${extractedData.email}\n`;
       }
+      
+      // Modificación de asegurados
+      if (motivoIncidencia.includes('asegurados')) {
+        notes += `👥 Modificación de asegurados solicitada\n`;
+      }
+      
+      // Cesión de derechos
+      if (motivoIncidencia.includes('cesion')) {
+        notes += `📄 Cesión de derechos para préstamo hipotecario\n`;
+        if (motivoIncidencia.includes('incompletos')) {
+          notes += `⚠️ Faltan datos del préstamo - cliente debe volver a llamar\n`;
+        }
+      }
+      
+      // Cambio de forma de pago
+      if (motivoIncidencia.includes('forma de pago')) {
+        notes += `💳 Cambio de periodicidad de pago solicitado\n`;
+      }
+      
+      // Modificación de coberturas
+      if (motivoIncidencia.includes('coberturas')) {
+        notes += `🛡️ Modificación de coberturas solicitada\n`;
+      }
+      
+      // Datos incompletos
+      if (motivoIncidencia.includes('datos incompletos')) {
+        notes += `⚠️ Cliente no dispone de los datos necesarios para completar la gestión\n`;
+      }
     }
     
-    // Para otros casos: incluir dirección si está disponible
-    if (extractedData.direccion && !tipoIncidencia.includes('modificacion') && !tipoIncidencia.includes('cambio')) {
-      notes += `🏠 Dirección: ${extractedData.direccion}\n`;
+    // === 📄 SOLICITUDES DE DUPLICADO ===
+    else if (tipoIncidencia.includes('duplicado')) {
+      
+      // Duplicado por email
+      if (motivoIncidencia.includes('email') && extractedData.email) {
+        notes += `📧 Email destino: ${extractedData.email}\n`;
+      }
+      
+      // Duplicado de tarjetas
+      if (motivoIncidencia.includes('tarjeta')) {
+        notes += `💳 Solicitud de duplicado de tarjeta de seguro\n`;
+      }
+      
+      // Recibos para declaración renta
+      if (motivoIncidencia.includes('renta') || motivoIncidencia.includes('declaracion')) {
+        notes += `📊 Recibos solicitados para declaración de la renta\n`;
+      }
     }
     
-    // Información adicional relevante
+    // === 🏗️ NUEVA CONTRATACIÓN ===
+    else if (tipoIncidencia.includes('nueva contratacion')) {
+      
+      // Especificar ramo si está disponible
+      if (incident.ramo) {
+        notes += `🎯 Ramo solicitado: ${incident.ramo}\n`;
+      }
+      
+      // Suspensión de garantías
+      if (motivoIncidencia.includes('suspension')) {
+        notes += `⏸️ Cliente tiene póliza con suspensión de garantías\n`;
+      }
+      
+      // Incluir dirección para nuevas contrataciones
+      if (extractedData.direccion) {
+        notes += `🏠 Dirección: ${extractedData.direccion}\n`;
+      }
+    }
+    
+    // === 🏢 GESTIÓN COMERCIAL ===
+    else if (tipoIncidencia.includes('gestion comercial')) {
+      
+      // Reenvío por rechazo a IA
+      if (motivoIncidencia.includes('no quiere ia')) {
+        notes += `🤖 Cliente rechaza explícitamente atención automatizada\n`;
+      }
+      
+      // Reenvío por no tomador
+      if (motivoIncidencia.includes('no tomador')) {
+        notes += `👤 Llamante no es el tomador de la póliza consultada\n`;
+      }
+      
+      // Consulta resuelta
+      if (motivoIncidencia.includes('consulta cliente')) {
+        notes += `✅ Consulta resuelta directamente por el agente virtual\n`;
+      }
+      
+      // Gestión no resuelta
+      if (motivoIncidencia.includes('llam gestion comerc')) {
+        notes += `📞 Gestión requiere intervención de agente humano\n`;
+      }
+      
+      // Reenvío a siniestros
+      if (motivoIncidencia.includes('siniestros')) {
+        notes += `🚗 Transferido a departamento de siniestros\n`;
+      }
+      
+      // Fraccionamiento desde anual
+      if (motivoIncidencia.includes('cambio forma de pago')) {
+        notes += `💰 Fraccionamiento de pago anual solicitado\n`;
+      }
+    }
+    
+    // === 🚨 OTROS SERVICIOS ===
+    else if (tipoIncidencia.includes('asistencia carretera')) {
+      notes += `🚗 Solicitud de asistencia en carretera/grúa\n`;
+    }
+    else if (tipoIncidencia.includes('retencion cliente')) {
+      notes += `🔄 Cliente solicita anulación/baja de póliza\n`;
+    }
+    else if (tipoIncidencia.includes('baja cliente')) {
+      notes += `🚫 Cliente solicita baja de base de datos\n`;
+    }
+    else if (tipoIncidencia.includes('reclamacion')) {
+      notes += `📢 Reclamación sobre regalo no recibido\n`;
+    }
+    
+    // === 📋 INFORMACIÓN ADICIONAL GENERAL ===
+    
+    // Póliza mencionada diferente a la afectada
     if (extractedData.numeroPoliza && incident.numeroPolizaAfectada !== extractedData.numeroPoliza) {
       notes += `📋 Póliza mencionada: ${extractedData.numeroPoliza}\n`;
     }
     
-    // Agregar contexto de rellamada si aplica
-    if (decision.incidentAnalysis.followUpInfo.isFollowUp) {
-      notes += `\n[RELLAMADA] Relacionada con ticket: ${decision.incidentAnalysis.followUpInfo.relatedTicketId}\n`;
+    // Dirección para casos no cubiertos arriba
+    if (extractedData.direccion && !notes.includes('dirección') && !notes.includes('Dirección')) {
+      notes += `🏠 Dirección: ${extractedData.direccion}\n`;
     }
     
+    // Información de cliente existente
+    if (decision.clientInfo.clientType === 'existing' && decision.clientInfo.existingClientInfo) {
+      const clientInfo = decision.clientInfo.existingClientInfo;
+      if (clientInfo.numeroPoliza && !notes.includes(clientInfo.numeroPoliza)) {
+        notes += `📋 Póliza principal: ${clientInfo.numeroPoliza}\n`;
+      }
+    }
+    
+    // Información de lead
+    if (decision.clientInfo.clientType === 'lead' && decision.clientInfo.leadInfo) {
+      const leadInfo = decision.clientInfo.leadInfo;
+      notes += `🎯 Lead de campaña: ${leadInfo.campaignName}\n`;
+      if (leadInfo.ramo) {
+        notes += `📋 Ramo de interés: ${leadInfo.ramo}\n`;
+      }
+    }
+    
+    // === 🔄 CONTEXTO DE RELLAMADA ===
+    if (decision.incidentAnalysis.followUpInfo.isFollowUp) {
+      notes += `\n[RELLAMADA] Relacionada con ticket: ${decision.incidentAnalysis.followUpInfo.relatedTicketId}\n`;
+      if (decision.incidentAnalysis.followUpInfo.followUpReason) {
+        notes += `Motivo seguimiento: ${decision.incidentAnalysis.followUpInfo.followUpReason}\n`;
+      }
+    }
+    
+    // === 📊 METADATOS FINALES ===
     notes += `\nProcesado automáticamente por IA (Confianza: ${Math.round(decision.metadata.confidence * 100)}%)`;
     
-    return notes.substring(0, 500); // Limitar longitud
+    // Limitar longitud pero preservar información crítica
+    if (notes.length > 500) {
+      // Mantener descripción inicial + datos críticos + metadatos finales
+      const description = incident.description;
+      const criticalInfo = notes.match(/[🏦🏠📧📞👥📄💳🛡️⚠️📊🎯⏸️🤖👤✅📞🚗🔄🚫📢📋🎯]/g) || [];
+      const confidence = `Procesado automáticamente por IA (Confianza: ${Math.round(decision.metadata.confidence * 100)}%)`;
+      
+      // Reconstruir con información más crítica
+      const criticalLines = notes.split('\n').filter(line => 
+        line.includes('🏦') || line.includes('📧') || line.includes('🏠') || 
+        line.includes('📞') || line.includes('⚠️') || line.includes('[RELLAMADA]')
+      );
+      
+      notes = `${description}\n\n${criticalLines.join('\n')}\n\n${confidence}`;
+      
+      // Si aún es muy largo, truncar manteniendo lo más importante
+      if (notes.length > 500) {
+        notes = notes.substring(0, 480) + '... [Truncado]';
+      }
+    }
+    
+    return notes;
   }
 
   /**
-   * Generar notas para rellamada
+   * Generar notas para rellamada - VERSIÓN MEJORADA
    */
   private generateFollowUpNotes(decision: CallDecision, call: Call): string {
     const followUpInfo = decision.incidentAnalysis.followUpInfo;
+    const extractedData = decision.clientInfo.extractedData;
     
-    let notes = `Rellamada de seguimiento: ${followUpInfo.followUpReason || 'Cliente solicita seguimiento'}\n\n`;
-    notes += `${decision.incidentAnalysis.primaryIncident.description}\n\n`;
-    notes += `Procesado automáticamente por IA (Confianza: ${Math.round(decision.metadata.confidence * 100)}%)`;
+    let notes = `🔄 RELLAMADA DE SEGUIMIENTO\n`;
+    notes += `Motivo: ${followUpInfo.followUpReason || 'Cliente solicita seguimiento'}\n\n`;
+    
+    // Descripción de la nueva gestión si aplica
+    if (decision.incidentAnalysis.primaryIncident.description) {
+      notes += `${decision.incidentAnalysis.primaryIncident.description}\n\n`;
+    }
+    
+    // Información del ticket relacionado
+    if (followUpInfo.relatedTicketId) {
+      notes += `📋 Ticket relacionado: ${followUpInfo.relatedTicketId}\n`;
+    }
+    
+    // Datos adicionales si se proporcionan en la rellamada
+    if (extractedData.email) {
+      notes += `📧 Email: ${extractedData.email}\n`;
+    }
+    if (extractedData.telefono && extractedData.telefono !== call.caller_id) {
+      notes += `📞 Teléfono: ${extractedData.telefono}\n`;
+    }
+    if (extractedData.direccion) {
+      notes += `🏠 Dirección: ${extractedData.direccion}\n`;
+    }
+    if (extractedData.cuentaBancaria) {
+      notes += `🏦 Cuenta bancaria: ${extractedData.cuentaBancaria}\n`;
+    }
+    
+    notes += `\nProcesado automáticamente por IA (Confianza: ${Math.round(decision.metadata.confidence * 100)}%)`;
     
     return notes.substring(0, 500);
   }

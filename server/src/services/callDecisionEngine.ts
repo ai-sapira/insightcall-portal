@@ -25,6 +25,7 @@ export interface CallDecision {
       codigoCliente?: string;          // Si se encontró en tool_results
       direccion?: string;
       ramo?: string;                   // Del cliente existente o nuevo contrato
+      cuentaBancaria?: string;         // CRÍTICO: nuevo IBAN para cambios de cuenta
     };
     
     // Info de cliente existente (de tool_results)
@@ -299,7 +300,8 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 1. **SIEMPRE parsear result_value como JSON**
 2. **SI data.clientes[0] existe → usar codigo_cliente como clientId**
 3. **SI usuario menciona ramo específico → extraerlo (HOGAR, AUTO, VIDA, etc.)**
-4. **NUNCA inventar datos que no estén presentes**
+4. **EXTRAER DATOS BANCARIOS**: Buscar IBANs, números de cuenta (ES12 3456 7890 1234 5678 9012)
+5. **NUNCA inventar datos que no estén presentes**
 
 ## 🎫 TIPOS DE INCIDENCIA COMPLETOS:
 
@@ -554,7 +556,8 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
       "numeroPoliza": "SOLO si es gestión sobre póliza existente",
       "codigoCliente": "SOLO si es cliente existente de tool_results",
       "direccion": "si se menciona",
-      "ramo": "HOGAR|AUTO|VIDA|DECESOS|SALUD si es nueva contratación"
+      "ramo": "HOGAR|AUTO|VIDA|DECESOS|SALUD si es nueva contratación",
+      "cuentaBancaria": "IBAN completo si se proporciona para cambio de cuenta"
     },
     "existingClientInfo": {
       "clientId": "codigo_cliente del tool_result",
