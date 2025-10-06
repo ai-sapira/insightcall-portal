@@ -252,7 +252,7 @@ export class CallExecutor {
       
       if (response.success) {
         // 💾 GUARDAR TICKET EN SUPABASE PARA EL FRONTEND
-        await this.saveTicketToSupabase(call, decision, response.ticket_id!, clientId, numeroPoliza);
+        await this.saveTicketToSupabase(call, decision, response.ticket_id!, clientId, numeroPoliza, ticketPayload.Notas);
         
         return {
           success: true,
@@ -697,7 +697,8 @@ export class CallExecutor {
     decision: CallDecision, 
     ticketId: string, 
     clientId: string, 
-    numeroPoliza?: string | null
+    numeroPoliza?: string | null,
+    notasGeneradas?: string  // ✅ NUEVO: Agregar las notas generadas
   ): Promise<void> {
     try {
       const { supabase } = require('../lib/supabase');
@@ -747,7 +748,8 @@ ${notasEspecificas}
           extracted_data: decision.clientInfo.extractedData,
           nogal_status: 'sent_to_nogal',
           generated_uuid: ticketUuid,
-          created_by_system: 'CallExecutor'
+          created_by_system: 'CallExecutor',
+          notas_enviadas: notasGeneradas  // ✅ NUEVO: Guardar las notas enviadas a Nogal
         }
       };
 

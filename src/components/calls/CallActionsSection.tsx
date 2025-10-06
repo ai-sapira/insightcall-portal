@@ -21,6 +21,7 @@ interface TicketCreated {
   cliente_id: string;
   estado: 'created' | 'failed';
   error?: string;
+  notas?: string; // ✅ NUEVO: Campo para mostrar las notas enviadas a Nogal
 }
 
 interface RellamadaCreated {
@@ -224,6 +225,21 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                           </div>
                         </div>
                       </div>
+
+                      {/* NOTAS ENVIADAS A NOGAL - NUEVO */}
+                      {ticket.notas && (
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-muted-foreground text-sm font-medium">Notas enviadas a Nogal</p>
+                          </div>
+                          <div className="bg-background border rounded-md p-3 max-h-32 overflow-y-auto">
+                            <pre className="text-sm whitespace-pre-wrap font-mono text-foreground leading-relaxed">
+                              {ticket.notas}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
 
                       {/* DATOS DEL CLIENTE */}
                       {datosCliente && (

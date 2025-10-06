@@ -54,24 +54,37 @@ export class CrearTicketController {
       const motivoIncidencia = MotivoIncidencia.toString().toLowerCase();
       
       // 🏦 CRÍTICO: Para cambios de cuenta bancaria, verificar si falta el número de cuenta
-      if (motivoIncidencia.includes('cuenta') && !notasMejoradas.toLowerCase().includes('es')) {
-        console.log(`🔍 [ENDPOINT] Detectado cambio de cuenta SIN número - intentando recuperar datos de la llamada...`);
+      if (motivoIncidencia.includes('cuenta')) {
+        console.log(`🔍 [ENDPOINT] Detectado cambio de cuenta - verificando si incluye IBAN...`);
+        console.log(`📋 [ENDPOINT] Notas originales:`, notasMejoradas);
         
-        try {
-          const notasEnriquecidas = await this.enrichNotesWithCallData(
-            IdLlamada.toString().trim(),
-            notasMejoradas,
-            TipoIncidencia.toString().trim(),
-            MotivoIncidencia.toString().trim()
-          );
+        // Detectar si las notas NO contienen un IBAN (formato ES + 20 dígitos)
+        const contieneIBAN = /ES\d{20}/.test(notasMejoradas) || /ES\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}/.test(notasMejoradas);
+        
+        if (!contieneIBAN) {
+          console.log(`❌ [ENDPOINT] NO se encontró IBAN en las notas - intentando recuperar de la llamada...`);
           
-          if (notasEnriquecidas && notasEnriquecidas !== notasMejoradas) {
-            console.log(`✅ [ENDPOINT] Notas enriquecidas con datos de la llamada`);
-            notasMejoradas = notasEnriquecidas;
+          try {
+            const notasEnriquecidas = await this.enrichNotesWithCallData(
+              IdLlamada.toString().trim(),
+              notasMejoradas,
+              TipoIncidencia.toString().trim(),
+              MotivoIncidencia.toString().trim()
+            );
+            
+            if (notasEnriquecidas && notasEnriquecidas !== notasMejoradas) {
+              console.log(`✅ [ENDPOINT] Notas enriquecidas con datos de la llamada`);
+              console.log(`📋 [ENDPOINT] Notas finales:`, notasEnriquecidas);
+              notasMejoradas = notasEnriquecidas;
+            } else {
+              console.log(`⚠️ [ENDPOINT] No se pudieron enriquecer las notas - usando originales`);
+            }
+          } catch (error) {
+            console.error(`❌ [ENDPOINT] Error enriqueciendo notas:`, error);
+            // Continuar con las notas originales
           }
-        } catch (error) {
-          console.warn(`⚠️ [ENDPOINT] No se pudieron enriquecer las notas:`, error);
-          // Continuar con las notas originales
+        } else {
+          console.log(`✅ [ENDPOINT] IBAN ya presente en las notas - no es necesario enriquecer`);
         }
       }
 
@@ -193,7 +206,10 @@ export class CrearTicketController {
     motivoIncidencia: string
   ): Promise<string> {
     try {
-      console.log(`🔍 [ENRICH] Buscando llamada: ${conversationId}`);
+      console.log(`🔍 [ENRICH] === INICIANDO ENRIQUECIMIENTO ===`);
+      console.log(`🔍 [ENRICH] ConversationId: ${conversationId}`);
+      console.log(`🔍 [ENRICH] TipoIncidencia: ${tipoIncidencia}`);
+      console.log(`🔍 [ENRICH] MotivoIncidencia: ${motivoIncidencia}`);
 
       // 1. Buscar la llamada en Supabase
       const { data: call, error } = await supabase
@@ -202,24 +218,48 @@ export class CrearTicketController {
         .eq('conversation_id', conversationId)
         .single();
 
-      if (error || !call) {
+      if (error) {
+        console.error(`❌ [ENRICH] Error buscando llamada:`, error);
+        return notasOriginales;
+      }
+
+      if (!call) {
         console.warn(`⚠️ [ENRICH] No se encontró la llamada: ${conversationId}`);
         return notasOriginales;
       }
 
+      console.log(`✅ [ENRICH] Llamada encontrada:`, {
+        id: call.id,
+        conversation_id: call.conversation_id,
+        hasTranscripts: !!call.transcripts,
+        transcriptsLength: Array.isArray(call.transcripts) ? call.transcripts.length : 0,
+        hasAnalysis: !!call.ai_analysis
+      });
+
       // 2. Verificar si ya tiene análisis completo
       if (!call.transcripts || !Array.isArray(call.transcripts) || call.transcripts.length === 0) {
-        console.warn(`⚠️ [ENRICH] La llamada no tiene transcripts: ${conversationId}`);
+        console.warn(`⚠️ [ENRICH] La llamada no tiene transcripts válidos: ${conversationId}`);
         return notasOriginales;
       }
 
-      console.log(`✅ [ENRICH] Llamada encontrada con ${call.transcripts.length} transcripts`);
+      console.log(`🧠 [ENRICH] Re-analizando llamada con ${call.transcripts.length} transcripts...`);
 
       // 3. Re-analizar la llamada para obtener datos extraídos
       const decision = await callDecisionEngine.analyzeCall(call.transcripts, conversationId);
       
-      if (!decision || !decision.clientInfo.extractedData) {
-        console.warn(`⚠️ [ENRICH] No se pudo obtener análisis de la llamada: ${conversationId}`);
+      if (!decision) {
+        console.warn(`⚠️ [ENRICH] No se recibió decisión del análisis: ${conversationId}`);
+        return notasOriginales;
+      }
+
+      console.log(`✅ [ENRICH] Análisis completado:`, {
+        clientType: decision.clientInfo?.clientType,
+        hasExtractedData: !!decision.clientInfo?.extractedData,
+        extractedDataKeys: decision.clientInfo?.extractedData ? Object.keys(decision.clientInfo.extractedData) : []
+      });
+
+      if (!decision.clientInfo?.extractedData) {
+        console.warn(`⚠️ [ENRICH] No hay datos extraídos en el análisis: ${conversationId}`);
         return notasOriginales;
       }
 
@@ -227,17 +267,34 @@ export class CrearTicketController {
       const extractedData = decision.clientInfo.extractedData;
       const motivoLower = motivoIncidencia.toLowerCase();
       
+      console.log(`🔍 [ENRICH] Datos extraídos disponibles:`, {
+        cuentaBancaria: extractedData.cuentaBancaria || 'NO DISPONIBLE',
+        email: extractedData.email || 'NO DISPONIBLE',
+        direccion: extractedData.direccion || 'NO DISPONIBLE',
+        telefono: extractedData.telefono || 'NO DISPONIBLE',
+        nombreCompleto: extractedData.nombreCompleto || 'NO DISPONIBLE'
+      });
+      
       let datoCriticoEncontrado = false;
       let notasEnriquecidas = notasOriginales;
 
       // 🏦 Para cambios de cuenta bancaria
-      if (motivoLower.includes('cuenta') && extractedData.cuentaBancaria) {
-        console.log(`🏦 [ENRICH] Número de cuenta encontrado: ${extractedData.cuentaBancaria}`);
+      if (motivoLower.includes('cuenta')) {
+        console.log(`🏦 [ENRICH] Procesando cambio de cuenta...`);
         
-        // Agregar el número de cuenta a las notas existentes
-        if (!notasEnriquecidas.toLowerCase().includes(extractedData.cuentaBancaria.toLowerCase())) {
-          notasEnriquecidas += `\n\n🏦 Nueva cuenta bancaria: ${extractedData.cuentaBancaria}`;
-          datoCriticoEncontrado = true;
+        if (extractedData.cuentaBancaria) {
+          console.log(`🏦 [ENRICH] Número de cuenta encontrado: ${extractedData.cuentaBancaria}`);
+          
+          // Agregar el número de cuenta a las notas existentes
+          if (!notasEnriquecidas.toLowerCase().includes(extractedData.cuentaBancaria.toLowerCase())) {
+            notasEnriquecidas += `\n\n🏦 Nueva cuenta bancaria: ${extractedData.cuentaBancaria}`;
+            datoCriticoEncontrado = true;
+            console.log(`✅ [ENRICH] Cuenta bancaria agregada a las notas`);
+          } else {
+            console.log(`ℹ️ [ENRICH] La cuenta bancaria ya estaba en las notas`);
+          }
+        } else {
+          console.warn(`⚠️ [ENRICH] NO se encontró cuenta bancaria en los datos extraídos`);
         }
       }
 
