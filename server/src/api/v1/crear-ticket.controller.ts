@@ -4,6 +4,9 @@
 import { Request, Response } from 'express';
 import { nogalTicketService } from '../../services/nogalTicketService';
 import { NogalTicketPayload } from '../../types/calls.types';
+import { supabase } from '../../lib/supabase';
+import { callDecisionEngine } from '../../services/callDecisionEngine';
+import { callExecutor } from '../../services/callExecutor';
 
 export class CrearTicketController {
 
@@ -46,14 +49,40 @@ export class CrearTicketController {
         });
       }
 
-      // 2. Preparar payload para Nogal (sin IdTicket, se genera automáticamente)
+      // 2. 🔍 INTERCEPTAR Y MEJORAR NOTAS - Detectar si faltan datos críticos
+      let notasMejoradas = Notas.toString().trim();
+      const motivoIncidencia = MotivoIncidencia.toString().toLowerCase();
+      
+      // 🏦 CRÍTICO: Para cambios de cuenta bancaria, verificar si falta el número de cuenta
+      if (motivoIncidencia.includes('cuenta') && !notasMejoradas.toLowerCase().includes('es')) {
+        console.log(`🔍 [ENDPOINT] Detectado cambio de cuenta SIN número - intentando recuperar datos de la llamada...`);
+        
+        try {
+          const notasEnriquecidas = await this.enrichNotesWithCallData(
+            IdLlamada.toString().trim(),
+            notasMejoradas,
+            TipoIncidencia.toString().trim(),
+            MotivoIncidencia.toString().trim()
+          );
+          
+          if (notasEnriquecidas && notasEnriquecidas !== notasMejoradas) {
+            console.log(`✅ [ENDPOINT] Notas enriquecidas con datos de la llamada`);
+            notasMejoradas = notasEnriquecidas;
+          }
+        } catch (error) {
+          console.warn(`⚠️ [ENDPOINT] No se pudieron enriquecer las notas:`, error);
+          // Continuar con las notas originales
+        }
+      }
+
+      // 3. Preparar payload para Nogal (sin IdTicket, se genera automáticamente)
       const ticketPayload: Omit<NogalTicketPayload, 'IdTicket'> = {
         IdCliente: IdCliente.toString().trim(),
         IdLlamada: IdLlamada.toString().trim(),
         TipoIncidencia: TipoIncidencia.toString().trim(),
         MotivoIncidencia: MotivoIncidencia.toString().trim(),
         NumeroPoliza: req.body.NumeroPoliza?.toString().trim() || '', // ✅ Opcional - vacío si no se identifica
-        Notas: Notas.toString().trim(),
+        Notas: notasMejoradas,
         FicheroLlamada: req.body.FicheroLlamada?.toString().trim() || ''
       };
 
@@ -152,6 +181,108 @@ export class CrearTicketController {
       endpoint: "POST /api/v1/crear-ticket",
       note: "IdTicket, JsonId, Fecha y Hora se generan automáticamente"
     });
+  }
+
+  /**
+   * 🔍 ENRIQUECER NOTAS - Recuperar datos de la llamada y regenerar notas usando CallExecutor
+   */
+  private async enrichNotesWithCallData(
+    conversationId: string,
+    notasOriginales: string,
+    tipoIncidencia: string,
+    motivoIncidencia: string
+  ): Promise<string> {
+    try {
+      console.log(`🔍 [ENRICH] Buscando llamada: ${conversationId}`);
+
+      // 1. Buscar la llamada en Supabase
+      const { data: call, error } = await supabase
+        .from('calls')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .single();
+
+      if (error || !call) {
+        console.warn(`⚠️ [ENRICH] No se encontró la llamada: ${conversationId}`);
+        return notasOriginales;
+      }
+
+      // 2. Verificar si ya tiene análisis completo
+      if (!call.transcripts || !Array.isArray(call.transcripts) || call.transcripts.length === 0) {
+        console.warn(`⚠️ [ENRICH] La llamada no tiene transcripts: ${conversationId}`);
+        return notasOriginales;
+      }
+
+      console.log(`✅ [ENRICH] Llamada encontrada con ${call.transcripts.length} transcripts`);
+
+      // 3. Re-analizar la llamada para obtener datos extraídos
+      const decision = await callDecisionEngine.analyzeCall(call.transcripts, conversationId);
+      
+      if (!decision || !decision.clientInfo.extractedData) {
+        console.warn(`⚠️ [ENRICH] No se pudo obtener análisis de la llamada: ${conversationId}`);
+        return notasOriginales;
+      }
+
+      // 4. Verificar si tenemos el dato crítico que falta
+      const extractedData = decision.clientInfo.extractedData;
+      const motivoLower = motivoIncidencia.toLowerCase();
+      
+      let datoCriticoEncontrado = false;
+      let notasEnriquecidas = notasOriginales;
+
+      // 🏦 Para cambios de cuenta bancaria
+      if (motivoLower.includes('cuenta') && extractedData.cuentaBancaria) {
+        console.log(`🏦 [ENRICH] Número de cuenta encontrado: ${extractedData.cuentaBancaria}`);
+        
+        // Agregar el número de cuenta a las notas existentes
+        if (!notasEnriquecidas.toLowerCase().includes(extractedData.cuentaBancaria.toLowerCase())) {
+          notasEnriquecidas += `\n\n🏦 Nueva cuenta bancaria: ${extractedData.cuentaBancaria}`;
+          datoCriticoEncontrado = true;
+        }
+      }
+
+      // 📧 Para cambios de email
+      if (motivoLower.includes('email') && extractedData.email) {
+        console.log(`📧 [ENRICH] Email encontrado: ${extractedData.email}`);
+        
+        if (!notasEnriquecidas.toLowerCase().includes(extractedData.email.toLowerCase())) {
+          notasEnriquecidas += `\n\n📧 Nuevo email: ${extractedData.email}`;
+          datoCriticoEncontrado = true;
+        }
+      }
+
+      // 🏠 Para cambios de dirección
+      if (motivoLower.includes('direccion') && extractedData.direccion) {
+        console.log(`🏠 [ENRICH] Dirección encontrada: ${extractedData.direccion}`);
+        
+        if (!notasEnriquecidas.toLowerCase().includes(extractedData.direccion.toLowerCase())) {
+          notasEnriquecidas += `\n\n🏠 Nueva dirección: ${extractedData.direccion}`;
+          datoCriticoEncontrado = true;
+        }
+      }
+
+      // 📞 Para cambios de teléfono
+      if (motivoLower.includes('telefono') && extractedData.telefono) {
+        console.log(`📞 [ENRICH] Teléfono encontrado: ${extractedData.telefono}`);
+        
+        if (!notasEnriquecidas.toLowerCase().includes(extractedData.telefono)) {
+          notasEnriquecidas += `\n\n📞 Nuevo teléfono: ${extractedData.telefono}`;
+          datoCriticoEncontrado = true;
+        }
+      }
+
+      if (datoCriticoEncontrado) {
+        console.log(`✅ [ENRICH] Notas enriquecidas exitosamente para: ${conversationId}`);
+        return notasEnriquecidas;
+      } else {
+        console.log(`ℹ️ [ENRICH] No se encontraron datos adicionales para enriquecer: ${conversationId}`);
+        return notasOriginales;
+      }
+
+    } catch (error) {
+      console.error(`❌ [ENRICH] Error enriqueciendo notas para ${conversationId}:`, error);
+      return notasOriginales;
+    }
   }
 }
 
