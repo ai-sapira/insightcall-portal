@@ -296,15 +296,24 @@ export class NogalTicketService {
     }
     
     const MAX_NOTAS_LENGTH = 500; // Límite conservador para campo Notas
-    let sanitized = notas.trim();
+    const originalLength = notas.length;
     
-    if (sanitized.length > MAX_NOTAS_LENGTH) {
-      // Truncar manteniendo la información más importante al principio
-      sanitized = sanitized.substring(0, MAX_NOTAS_LENGTH - 20) + '... [Texto truncado]';
-      console.log(`⚠️ [NOGAL] Notas truncadas por longitud: ${notas.length} → ${sanitized.length} chars`);
+    // Limpiar caracteres problemáticos (especialmente emojis) y normalizar
+    let sanitized = notas
+      .trim()
+      .replace(/[\r\n\t]+/g, ' ')  // Reemplazar saltos de línea y tabs por espacios
+      .replace(/\s+/g, ' ')        // Normalizar espacios múltiples
+      // Remover emojis Unicode específicamente (incluyendo surrogates como \ud83d)
+      .replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}-\u{2454}]|[\u{20D0}-\u{20FF}]/gu, '')
+      // Remover cualquier carácter que no sea alfanumérico, espacios o puntuación básica
+      .replace(/[^\w\sáéíóúüñÁÉÍÓÚÜÑ.,;:()\-\/€%]/g, '')
+      .substring(0, MAX_NOTAS_LENGTH); // Limitar longitud
+    
+    if (originalLength > MAX_NOTAS_LENGTH) {
+      console.log(`⚠️ [NOGAL] Notas truncadas por longitud: ${originalLength} → ${sanitized.length} chars`);
     }
     
-    console.log(`🧹 [NOGAL] Sanitizando Notas: ${notas.length} chars → ${sanitized.length} chars`);
+    console.log(`🧹 [NOGAL] Sanitizando Notas (eliminando emojis): ${originalLength} chars → ${sanitized.length} chars`);
     
     return sanitized;
   }
