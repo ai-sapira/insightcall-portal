@@ -190,22 +190,43 @@ Cliente quiere cambiar IBAN para domiciliación:
 
 ### **CAMBIO FECHA DE EFECTO**
 Cliente quiere modificar fecha de entrada en vigor:
-- Frases: "cambiar fecha de efecto", "modificar fecha entrada vigor"
+- Frases: "cambiar fecha de efecto", "modificar fecha entrada vigor", "cambiar la fecha", "fecha a la que entra en vigor", "fecha de entrada en vigor", "cambiar fecha efecto", "modificar fecha", "nueva fecha", "cambiar cuando entra en vigor", "fecha de inicio", "fecha de vigencia"
+- **CRÍTICO**: Si cliente menciona "cambiar" + "fecha" + contexto de póliza → ES "Cambio fecha de efecto" (prevalece sobre gestión comercial)
 - **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio fecha de efecto"
 
 ### **CAMBIO FORMA DE PAGO - REGLAS ESPECÍFICAS** ⚠️ CRÍTICO
 
-**SI PAGO ACTUAL NO ES ANUAL (trimestral, semestral, mensual):**
-- Frases: "tengo pago mensual/trimestral/semestral", "quiero cambiar periodicidad"
-- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio forma de pago"
-
-**SI PAGO ACTUAL ES ANUAL y quiere FRACCIONAR:**
-- Frases: "tengo pago anual", "quiero mensual/trimestral/semestral"
+**1. FRACCIONAMIENTO (anual → fraccionado):**
+- Frases: "tengo pago anual", "quiero mensual/trimestral/semestral", "fraccionar el pago"
 - **Tipo**: "Llamada gestión comercial" + **Motivo**: "Cambio forma de pago"
+- **Razón**: Fraccionamiento requiere gestión comercial
 
-### **MODIFICACIÓN Nº ASEGURADOS**
-Cliente quiere incluir/excluir asegurados:
-- Frases: "añadir mi hijo", "incluir asegurado", "excluir de la póliza"
+**2. CONSOLIDACIÓN (fraccionado → anual):**
+- Frases: "tengo pago mensual/trimestral/semestral", "quiero pago anual", "cambiar a anual"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio forma de pago"
+- **Razón**: Consolidación es modificación directa de póliza
+
+**3. CAMBIO ENTRE FRACCIONADOS (mensual ↔ trimestral ↔ semestral):**
+- Frases: "de trimestral a semestral", "de mensual a trimestral"
+- **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio forma de pago"
+- **Razón**: Cambio entre fraccionados es modificación directa
+
+### **MODIFICACIÓN Nº ASEGURADOS** ⚠️ CRÍTICO
+Cliente quiere incluir/excluir asegurados en la póliza:
+
+**INCLUIR ASEGURADOS:**
+- Frases: "añadir mi hijo", "incluir asegurado", "meter en la póliza", "agregar a mi esposa", "incluir a mi pareja", "añadir beneficiario", "poner en el seguro", "incluir familiar", "agregar hijo", "añadir cónyuge", "incluir en cobertura"
+- Datos necesarios: Nombre, apellidos, DNI, fecha nacimiento del nuevo asegurado
+
+**EXCLUIR ASEGURADOS:**
+- Frases: "quitar de la póliza", "excluir asegurado", "eliminar beneficiario", "sacar del seguro", "dar de baja", "quitar cobertura", "excluir familiar", "eliminar de la póliza", "retirar asegurado"
+- Datos necesarios: Nombre y apellidos del asegurado a excluir
+
+**CAMBIAR ASEGURADOS:**
+- Frases: "cambiar beneficiario", "sustituir asegurado", "reemplazar en la póliza"
+- Datos necesarios: Datos del asegurado a excluir + datos del nuevo asegurado
+
+**CRÍTICO**: Si cliente menciona "incluir/excluir/añadir/quitar" + "hijo/esposa/familiar/asegurado" → ES "Modificación nº asegurados" (prevalece sobre otras clasificaciones)
 - **Tipo**: "Modificación póliza emitida" + **Motivo**: "Modificación nº asegurados"
 
 ### **CAMBIO DIRECCIÓN POSTAL**
@@ -213,20 +234,56 @@ Cliente quiere cambiar dirección postal:
 - Frases: "cambiar dirección", "nueva dirección postal", "modificar domicilio"
 - **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cambio dirección postal"
 
-### **MODIFICACIÓN COBERTURAS**
+### **MODIFICACIÓN COBERTURAS** ⚠️ CRÍTICO
 Cliente quiere cambiar coberturas de su póliza:
-- Frases: "cambiar cobertura", "de todo riesgo a terceros", "quitar/incluir cobertura"
+
+**CAMBIOS DE COBERTURA ESPECÍFICOS:**
+- Frases: "cambiar cobertura", "modificar coberturas", "de todo riesgo a terceros", "pasar a terceros", "quitar todo riesgo", "cambiar a terceros", "reducir cobertura", "ampliar cobertura", "incluir cobertura", "excluir cobertura", "modificar una parte de las coberturas", "cambiar el tipo de cobertura"
+
+**TIPOS COMUNES:**
+- Todo riesgo → Terceros: "pasar de todo riesgo a terceros", "cambiar a terceros"
+- Terceros → Todo riesgo: "pasar a todo riesgo", "ampliar cobertura"
+- Añadir coberturas: "incluir lunas", "añadir robo", "incluir incendio"
+- Quitar coberturas: "quitar lunas", "excluir robo", "reducir cobertura"
+
+**CRÍTICO**: Si cliente menciona "cambiar/modificar" + "cobertura/coberturas" + especifica el cambio → ES "Modificación coberturas" (prevalece sobre gestión comercial)
 - **Tipo**: "Modificación póliza emitida" + **Motivo**: "Modificación coberturas"
 
-### **CESIÓN DE DERECHOS DATOS INCOMPLETOS**
-Cliente solicita cesión para préstamo hipotecario pero no tiene datos:
-- Frases: "cesión de derechos", "préstamo hipotecario" + "no tengo datos"
-- Agente: "necesito datos del préstamo, vuelva a llamar cuando los tenga"
+### **CESIÓN DE DERECHOS DATOS INCOMPLETOS** ⚠️ CRÍTICO
+Cliente solicita cesión para préstamo hipotecario pero NO tiene datos necesarios:
+
+**FRASES CLIENTE:**
+- "cesión de derechos", "cesión derechos", "ceder derechos", "cesión para préstamo", "cesión hipotecaria"
+- "préstamo hipotecario", "hipoteca", "préstamo del banco", "crédito hipotecario"
+- "me pide el banco", "necesita el banco", "para la hipoteca", "para el préstamo"
+
+**SITUACIONES SIN DATOS:**
+- Cliente: "no tengo los datos", "no sé qué necesitan", "no me han dado información"
+- Cliente: "solo me dijeron que llamara", "el banco me dijo que os llamara"
+- Agente: "necesito datos del préstamo", "debe contactar con su banco", "vuelva a llamar cuando tenga los datos"
+
+**DATOS NECESARIOS FALTANTES:**
+- Entidad bancaria, importe del préstamo, número de préstamo, datos del acreedor
+
+**CRÍTICO**: Si cliente menciona "cesión" + "préstamo/hipoteca" pero NO proporciona datos específicos → ES "Cesión de derechos datos incompletos"
 - **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cesión de derechos datos incompletos"
 
-### **CESIÓN DE DERECHOS**
-Cliente solicita cesión con datos completos:
-- Frases: "cesión de derechos", "préstamo hipotecario" + proporciona datos completos
+### **CESIÓN DE DERECHOS** ⚠️ CRÍTICO
+Cliente solicita cesión con datos completos del préstamo:
+
+**FRASES CLIENTE:**
+- "cesión de derechos", "cesión derechos", "ceder derechos", "cesión para préstamo", "cesión hipotecaria"
+- "préstamo hipotecario", "hipoteca", "préstamo del banco", "crédito hipotecario"
+
+**SITUACIONES CON DATOS COMPLETOS:**
+- Cliente proporciona: entidad bancaria, importe, número de préstamo
+- Cliente: "el préstamo es de [banco] por [importe]", "número de préstamo [número]"
+- Agente: "perfecto, con estos datos procederemos", "tramitaremos la cesión"
+
+**DATOS NECESARIOS PROPORCIONADOS:**
+- Entidad bancaria, importe del préstamo, número de préstamo/expediente, datos del acreedor
+
+**CRÍTICO**: Si cliente menciona "cesión" + "préstamo/hipoteca" Y proporciona datos específicos → ES "Cesión de derechos"
 - **Tipo**: "Modificación póliza emitida" + **Motivo**: "Cesión de derechos"
 
 ### **CORRECCIÓN DATOS ERRÓNEOS EN PÓLIZA**
@@ -272,7 +329,8 @@ Cliente solicita duplicado por correo electrónico:
 
 ### **DUPLICADO TARJETA**
 Cliente solicita duplicado de tarjetas de seguro:
-- Frases: "duplicado tarjeta", "tarjeta decesos", "tarjeta salud"
+- Frases: "duplicado tarjeta", "duplicado de tarjeta", "duplicado de mi tarjeta", "tarjeta decesos", "tarjeta salud", "recibir duplicado tarjeta", "envío de tarjeta", "copia de tarjeta"
+- **CRÍTICO**: Si cliente menciona "duplicado" + "tarjeta" → ES "Duplicado Tarjeta" (incluso si agente dice "dirección postal")
 - **Tipo**: "Solicitud duplicado póliza" + **Motivo**: "Duplicado Tarjeta"
 
 ### **INFORMACIÓN RECIBOS DECLARACIÓN RENTA**
@@ -350,7 +408,13 @@ AGENT: "Perfecto, procederemos con el fraccionamiento de su póliza"
 **CLASIFICACIÓN**: "Llamada gestión comercial" + "Cambio forma de pago"
 **RAZÓN**: Fraccionamiento desde anual requiere gestión comercial
 
-**EJEMPLO 9 - CAMBIO PAGO NO ANUAL (CORRECTO)** ⚠️ CRÍTICO:
+**EJEMPLO 9 - CONSOLIDACIÓN A ANUAL (CORRECTO)** ⚠️ CRÍTICO:
+USER: "Tengo pago trimestral y quiero cambiar a anual"
+AGENT: "Registramos el cambio a pago anual"
+**CLASIFICACIÓN**: "Modificación póliza emitida" + "Cambio forma de pago"
+**RAZÓN**: Consolidación (fraccionado → anual) es modificación directa
+
+**EJEMPLO 10 - CAMBIO ENTRE FRACCIONADOS (CORRECTO)** ⚠️ CRÍTICO:
 USER: "Tengo pago trimestral y quiero cambiar a semestral"
 AGENT: "Registramos el cambio de periodicidad"
 **CLASIFICACIÓN**: "Modificación póliza emitida" + "Cambio forma de pago"
@@ -378,7 +442,9 @@ AGENT: "Registramos el cambio de periodicidad"
 ### **FASE 5: GESTIONES NORMALES**
 10. **NUEVA CONTRATACIÓN** - Cliente quiere contratar → "Nueva contratación de seguros"
 11. **MODIFICACIONES** - Cambios en póliza → "Modificación póliza emitida"
+    ⚠️ **PRIORIDAD FECHA**: Si menciona "cambiar" + "fecha" + contexto póliza → SIEMPRE "Cambio fecha de efecto" (prevalece sobre gestión comercial)
 12. **DUPLICADOS** - Solo email, tarjeta, recibos → "Solicitud duplicado póliza"
+    ⚠️ **PRIORIDAD TARJETA**: Si menciona "duplicado" + "tarjeta" → SIEMPRE "Duplicado Tarjeta" (prevalece sobre correo postal)
 
 ### **REGLAS GENERALES:**
 - **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación

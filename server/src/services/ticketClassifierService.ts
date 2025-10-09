@@ -26,6 +26,50 @@ const PROMPT_SYSTEM = `Eres un experto clasificador de incidencias de seguros. T
 
 IMPORTANTE: Analiza cuidadosamente la conversación y detecta las NECESIDADES REALES del cliente. No te limites a palabras clave.
 
+REGLAS CRÍTICAS: 
+1. Si el cliente menciona "duplicado" + "tarjeta" (en cualquier variación), SIEMPRE es "Duplicado Tarjeta" con score 0.9-1.0, independientemente de lo que diga el agente sobre envío postal.
+2. Si el cliente menciona "cambiar" + "fecha" + contexto de póliza/seguro, SIEMPRE es "Cambio fecha de efecto" con score 0.9-1.0, independientemente de que el agente mencione transferencia.
+3. Si el cliente menciona "incluir/excluir/añadir/quitar" + "hijo/esposa/familiar/asegurado", SIEMPRE es "Modificación nº asegurados" con score 0.9-1.0, independientemente de otras consideraciones.
+4. Si el cliente menciona "cambiar/modificar" + "cobertura/coberturas" + especifica el cambio, SIEMPRE es "Modificación coberturas" con score 0.9-1.0, independientemente de que el agente mencione transferencia.
+5. Si el cliente menciona "cesión" + "préstamo/hipoteca" Y proporciona datos específicos, SIEMPRE es "Cesión de derechos" con score 0.9-1.0.
+6. Si el cliente menciona "cesión" + "préstamo/hipoteca" pero NO proporciona datos necesarios, SIEMPRE es "Cesión de derechos datos incompletos" con score 0.9-1.0.
+
+EJEMPLOS ESPECÍFICOS DE DUPLICADO TARJETA:
+- "Quiero recibir un duplicado de mi tarjeta" → Duplicado Tarjeta (score 0.95)
+- "Necesito una copia de la tarjeta" → Duplicado Tarjeta (score 0.9)
+- "Me pueden enviar la tarjeta de nuevo" → Duplicado Tarjeta (score 0.9)
+- "Solicito duplicado de tarjeta de decesos" → Duplicado Tarjeta (score 1.0)
+
+EJEMPLOS ESPECÍFICOS DE CAMBIO FECHA DE EFECTO:
+- "quería cambiar la fecha a la que entra en vigor el seguro" → Cambio fecha de efecto (score 0.95)
+- "cambiar la fecha de efecto de mi póliza" → Cambio fecha de efecto (score 1.0)
+- "modificar cuando entra en vigor" → Cambio fecha de efecto (score 0.9)
+- "nueva fecha para el seguro" → Cambio fecha de efecto (score 0.85)
+
+EJEMPLOS ESPECÍFICOS DE MODIFICACIÓN Nº ASEGURADOS:
+- "quiero añadir a mi hijo en la póliza" → Modificación nº asegurados (score 1.0)
+- "necesito incluir a mi esposa en el seguro" → Modificación nº asegurados (score 0.95)
+- "quitar a mi ex-pareja de la póliza" → Modificación nº asegurados (score 0.95)
+- "excluir familiar del seguro" → Modificación nº asegurados (score 0.9)
+- "agregar beneficiario" → Modificación nº asegurados (score 0.9)
+
+EJEMPLOS ESPECÍFICOS DE MODIFICACIÓN COBERTURAS:
+- "modificar una parte de las coberturas y pasar de todo riesgo a terceros" → Modificación coberturas (score 1.0)
+- "cambiar cobertura a terceros" → Modificación coberturas (score 0.95)
+- "quitar todo riesgo" → Modificación coberturas (score 0.9)
+- "ampliar cobertura a todo riesgo" → Modificación coberturas (score 0.95)
+- "incluir cobertura de lunas" → Modificación coberturas (score 0.9)
+
+EJEMPLOS ESPECÍFICOS DE CESIÓN DE DERECHOS:
+- "necesito una cesión de derechos para mi préstamo hipotecario del Santander por 200.000€" → Cesión de derechos (score 1.0)
+- "cesión para préstamo del BBVA, número 12345678" → Cesión de derechos (score 0.95)
+- "ceder derechos de la póliza para hipoteca de 150.000€" → Cesión de derechos (score 0.9)
+
+EJEMPLOS ESPECÍFICOS DE CESIÓN DE DERECHOS DATOS INCOMPLETOS:
+- "me pide el banco una cesión de derechos pero no tengo los datos" → Cesión de derechos datos incompletos (score 1.0)
+- "necesito cesión para la hipoteca, solo me dijeron que os llamara" → Cesión de derechos datos incompletos (score 0.95)
+- "cesión de derechos para préstamo, no sé qué datos necesitan" → Cesión de derechos datos incompletos (score 0.9)
+
 CATÁLOGO DE INCIDENCIAS DISPONIBLES:
 {CATALOG_TABLE}
 

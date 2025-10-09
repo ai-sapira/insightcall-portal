@@ -113,6 +113,7 @@ export interface CallDecision {
   metadata: {
     confidence: number;
     processingRecommendation: string;
+    ticketNotes?: string;              // Notas generadas por LLM para el ticket
     warnings?: string[];
     toolResultsFound: boolean;         // ¿Se encontraron tool_results?
     clientSearchResults?: any;         // Info de búsquedas encontradas
@@ -293,7 +294,13 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 1. **DETECTA PRIMERO EL RECHAZO A IA**: Si cliente dice "no quiero máquina/robot/IA/hablar con máquina" → SIEMPRE es "Reenvío agentes humanos no quiere IA"
 2. **DETECTA DATOS INCOMPLETOS**: Si cliente no tiene datos necesarios para completar gestión → SIEMPRE es "Datos incompletos"  
 3. **DETECTA NO TOMADOR**: Si llamante identificado ≠ tomador de póliza consultada → SIEMPRE es "Reenvío agentes humanos no tomador"
-4. **PRIORIDAD SOBRE OTRAS CLASIFICACIONES**: Estos 3 casos PREVALECEN sobre cualquier otra clasificación posible
+4. **DETECTA DUPLICADO TARJETA**: Si cliente menciona "duplicado" + "tarjeta" → SIEMPRE es "Duplicado Tarjeta" (prevalece sobre correo postal)
+5. **DETECTA CAMBIO FECHA**: Si cliente menciona "cambiar" + "fecha" + contexto póliza → SIEMPRE es "Cambio fecha de efecto" (prevalece sobre gestión comercial)
+6. **DETECTA MODIFICACIÓN ASEGURADOS**: Si cliente menciona "incluir/excluir/añadir/quitar" + "hijo/esposa/familiar/asegurado" → SIEMPRE es "Modificación nº asegurados" (prevalece sobre otras clasificaciones)
+7. **DETECTA MODIFICACIÓN COBERTURAS**: Si cliente menciona "cambiar/modificar" + "cobertura/coberturas" + especifica el cambio → SIEMPRE es "Modificación coberturas" (prevalece sobre gestión comercial)
+8. **DETECTA CESIÓN CON DATOS**: Si cliente menciona "cesión" + "préstamo/hipoteca" Y proporciona datos específicos → SIEMPRE es "Cesión de derechos"
+9. **DETECTA CESIÓN SIN DATOS**: Si cliente menciona "cesión" + "préstamo/hipoteca" pero NO proporciona datos → SIEMPRE es "Cesión de derechos datos incompletos"
+10. **PRIORIDAD SOBRE OTRAS CLASIFICACIONES**: Estos 9 casos PREVALECEN sobre cualquier otra clasificación posible
 
 ## 🎯 REGLAS DE EXTRACCIÓN:
 
@@ -313,7 +320,7 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 - **Atención al cliente - Modif datos póliza**: Cambios que no varían prima (nombre, apellido, etc.)
 - **Cambio nº de cuenta**: Cambiar cuenta bancaria para domiciliación
 - **Cambio fecha de efecto**: Modificar fecha entrada en vigor del seguro
-- **Cambio forma de pago**: Cambiar periodicidad del pago (no desde anual)
+- **Cambio forma de pago**: Consolidación (fraccionado → anual) o cambio entre fraccionados
 - **Modificación nº asegurados**: Incluir/excluir asegurados en póliza
 - **Cambio dirección postal**: Modificar dirección postal de pólizas
 - **Modificación coberturas**: Cambiar coberturas (ej: todo riesgo a terceros)
@@ -325,7 +332,7 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 ### 🏢 **LLAMADA GESTIÓN COMERCIAL**:
 - **LLam gestión comerc**: Gestión sobre póliza (no renovación ni anulación)
 - **Consulta cliente**: SOLO consultas específicas que Carlos SÍ puede resolver (fecha efecto, número póliza, compañía, forma pago, próximo recibo)
-- **Cambio forma de pago**: Desde anual a fraccionado
+- **Cambio forma de pago**: Fraccionamiento (anual → fraccionado)
 - **Reenvío siniestros**: Cuando se transfiere a cola siniestros
 - **Reenvío agentes humanos**: Transferir a humanos (general)
 - **Reenvío agentes humanos no quiere IA**: Cliente rechaza IA explícitamente
@@ -371,9 +378,10 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 
 ### 📄 **SOLICITUD DUPLICADO PÓLIZA**:
 - **Duplicado Tarjeta**: Tarjetas seguro decesos/salud
+  ⚠️ **CRÍTICO**: Si cliente dice "duplicado" + "tarjeta" → ES "Duplicado Tarjeta" (incluso si agente menciona "dirección postal")
 - **Email**: Envío por correo electrónico
 - **Información recibos declaración renta**: Recibos para declaración renta
-- ⚠️ **CORREO ORDINARIO**: SIEMPRE es "Reenvío agentes humanos" (transferencia obligatoria)
+- ⚠️ **CORREO ORDINARIO**: SIEMPRE es "Reenvío agentes humanos" (solo si NO es tarjeta)
 
 ### 🚨 **OTROS SERVICIOS**:
 - **Llamada asistencia en carretera** + **Siniestros**: Cliente necesita grúa
@@ -488,6 +496,69 @@ USER: "¿Mi póliza cubre filtraciones de agua?"
 AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y uno de mis compañeros se pondrá en contacto"
 **CLASIFICACIÓN**: type: "Llamada gestión comercial", reason: "LLam gestión comerc"
 
+**EJEMPLO 7 - DUPLICADO TARJETA CON DIRECCIÓN POSTAL (CORRECTO)** ⚠️:
+USER: "Quiero recibir un duplicado de mi tarjeta"
+AGENT: "Perfecto, he tomado nota... se lo enviamos a su dirección postal"
+**CLASIFICACIÓN**: type: "Solicitud duplicado póliza", reason: "Duplicado Tarjeta"
+**RAZÓN**: Cliente dice "duplicado" + "tarjeta" → PREVALECE sobre "dirección postal"
+
+**EJEMPLO 8 - CAMBIO FECHA DE EFECTO CON TRANSFERENCIA (CORRECTO)** ⚠️:
+USER: "quería cambiar la fecha a la que entra en vigor el seguro que he contratado"
+AGENT: "entiendo que quieres cambiar la fecha de efecto de tu póliza... Para poder gestionarlo, necesito que me digas cuál es la nueva fecha"
+USER: "para el 1 de noviembre"
+AGENT: "he tomado nota de la nueva fecha... Un compañero revisará tu solicitud"
+**CLASIFICACIÓN**: type: "Modificación póliza emitida", reason: "Cambio fecha de efecto"
+**RAZÓN**: Cliente dice "cambiar" + "fecha" + "entra en vigor" → PREVALECE sobre "compañero revisará"
+
+**EJEMPLO 9 - FRACCIONAMIENTO DE PAGO (CORRECTO)** ⚠️:
+USER: "Tengo pago anual y me gustaría cambiarlo a mensual"
+AGENT: "Perfecto, procederemos con el fraccionamiento de su póliza"
+**CLASIFICACIÓN**: type: "Llamada gestión comercial", reason: "Cambio forma de pago"
+**RAZÓN**: Fraccionamiento (anual → fraccionado) requiere gestión comercial
+
+**EJEMPLO 10 - CONSOLIDACIÓN DE PAGO (CORRECTO)** ⚠️:
+USER: "Tengo pago trimestral y quiero cambiar a pago anual"
+AGENT: "Registramos el cambio a pago anual"
+**CLASIFICACIÓN**: type: "Modificación póliza emitida", reason: "Cambio forma de pago"
+**RAZÓN**: Consolidación (fraccionado → anual) es modificación directa de póliza
+
+**EJEMPLO 11 - INCLUIR ASEGURADO (CORRECTO)** ⚠️:
+USER: "Quiero añadir a mi hijo en la póliza de salud"
+AGENT: "Perfecto, necesito los datos de su hijo para incluirlo"
+USER: "Se llama Carlos García López, DNI 12345678A, nacido el 15 de marzo de 2010"
+**CLASIFICACIÓN**: type: "Modificación póliza emitida", reason: "Modificación nº asegurados"
+**RAZÓN**: Cliente dice "añadir" + "hijo" → ES "Modificación nº asegurados"
+
+**EJEMPLO 12 - EXCLUIR ASEGURADO (CORRECTO)** ⚠️:
+USER: "Necesito quitar a mi ex-esposa de la póliza de decesos"
+AGENT: "Entiendo, procederemos a excluir a su ex-esposa de la póliza"
+**CLASIFICACIÓN**: type: "Modificación póliza emitida", reason: "Modificación nº asegurados"
+**RAZÓN**: Cliente dice "quitar" + "ex-esposa" → ES "Modificación nº asegurados"
+
+**EJEMPLO 13 - MODIFICACIÓN COBERTURAS CON TRANSFERENCIA (CORRECTO)** ⚠️:
+USER: "me gustaría modificar una parte de las coberturas y pasar de todo riesgo a terceros"
+AGENT: "Perfecto, he tomado nota... Para poder gestionar el cambio de coberturas de todo riesgo a terceros, necesito saber desde qué fecha"
+USER: "desde el 1 de noviembre"
+AGENT: "he tomado nota... Un compañero revisará su solicitud"
+**CLASIFICACIÓN**: type: "Modificación póliza emitida", reason: "Modificación coberturas"
+**RAZÓN**: Cliente dice "modificar" + "coberturas" + "todo riesgo a terceros" → PREVALECE sobre "compañero revisará"
+
+**EJEMPLO 14 - CESIÓN DERECHOS CON DATOS (CORRECTO)** ⚠️:
+USER: "necesito una cesión de derechos para mi préstamo hipotecario"
+AGENT: "Perfecto, necesito los datos del préstamo"
+USER: "es un préstamo del Santander por 200.000 euros, número de expediente 12345678"
+AGENT: "Perfecto, procederemos con la cesión"
+**CLASIFICACIÓN**: type: "Modificación póliza emitida", reason: "Cesión de derechos"
+**RAZÓN**: Cliente dice "cesión" + "préstamo hipotecario" Y proporciona datos específicos (banco, importe, número)
+
+**EJEMPLO 15 - CESIÓN DERECHOS SIN DATOS (CORRECTO)** ⚠️:
+USER: "me pide el banco una cesión de derechos para la hipoteca"
+AGENT: "Necesito los datos del préstamo: entidad, importe y número de expediente"
+USER: "no tengo esos datos, solo me dijeron que os llamara"
+AGENT: "Debe contactar con su banco para obtener los datos y volver a llamar"
+**CLASIFICACIÓN**: type: "Modificación póliza emitida", reason: "Cesión de derechos datos incompletos"
+**RAZÓN**: Cliente dice "cesión" + "hipoteca" pero NO proporciona datos necesarios
+
 ## 📝 **CÓMO ESCRIBIR EL ANÁLISIS NARRATIVO:**
 
 ### **ESTRUCTURA OBLIGATORIA del processingRecommendation:**
@@ -539,6 +610,75 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
 8. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
 9. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
 10. **ESCRIBE NARRATIVA FLUIDA** - Usa el formato narrativo obligatorio para processingRecommendation
+11. **GENERA NOTAS CONCISAS** - Usa el formato específico para ticketNotes
+
+## 📋 **CÓMO ESCRIBIR LAS NOTAS DEL TICKET (ticketNotes):**
+
+### **FORMATO OBLIGATORIO:**
+📋 [Tipo de gestión]
+👤 Cliente: [Nombre Completo] (DNI: [dni])
+🏠 Póliza: [número] ([ramo] - [compañía])
+📝 Solicitud: [Descripción de lo que pidió el cliente y cómo se desarrolló la conversación]
+[icono] [Información específica nueva]
+📞 Conversación: [id] | Fecha: [fecha]
+
+### **EJEMPLOS DE NOTAS:**
+
+**Cambio fecha de efecto:**
+📋 Cambio fecha de efecto
+👤 Cliente: Manuel García López (DNI: 29755872J)
+🏠 Póliza: AU0420245310016 (Coche - Reale)
+📝 Solicitud: Cliente contacta para modificar la fecha de entrada en vigor del seguro que ha contratado. Indica que necesita cambiarla y proporciona la nueva fecha cuando se le solicita. El agente confirma la recepción de la solicitud.
+📅 Nueva fecha solicitada: 1 de noviembre de 2024
+📞 Conversación: conv_123 | Fecha: 09/10/2025
+
+**Cambio cuenta bancaria:**
+📋 Cambio cuenta bancaria
+👤 Cliente: María López García (DNI: 12345678A)
+🏠 Póliza: HO0420225024935 (Hogar - Mapfre)
+📝 Solicitud: Cliente llama para cambiar la cuenta bancaria de domiciliación de su póliza. Proporciona el nuevo IBAN completo y confirma que es la cuenta donde desea que se carguen los recibos.
+🏦 Nueva cuenta: ES91 2100 0418 4502 0005 1332
+📞 Conversación: conv_456 | Fecha: 09/10/2025
+
+**Duplicado tarjeta:**
+📋 Duplicado tarjeta
+👤 Cliente: Juan Pérez Martín (DNI: 87654321B)
+🏠 Póliza: DE0420225024935 (Decesos - Reale)
+📝 Solicitud: Cliente solicita el envío de un duplicado de su tarjeta de seguro de decesos. Confirma sus datos y dirección para el envío.
+💳 Solicita duplicado tarjeta de decesos
+📞 Conversación: conv_789 | Fecha: 09/10/2025
+
+**Modificación número de asegurados:**
+📋 Modificación nº asegurados
+👤 Cliente: María González López (DNI: 11223344C)
+🏠 Póliza: SA0420225024935 (Salud - Mapfre)
+📝 Solicitud: Cliente contacta para incluir a su hijo recién nacido en la póliza de salud familiar. Proporciona todos los datos necesarios del menor y confirma que desea la cobertura desde el nacimiento.
+👥 Incluir asegurado: Carlos González Martín (DNI: 55667788D, nacido 15/03/2024)
+📞 Conversación: conv_101 | Fecha: 09/10/2025
+
+**Modificación coberturas:**
+📋 Modificación coberturas
+👤 Cliente: Manuel Barrera López (DNI: 29755872J)
+🏠 Póliza: AU0420245310016 (Coche - Reale)
+📝 Solicitud: Cliente solicita modificar las coberturas de su póliza de coche, específicamente cambiar de todo riesgo a terceros. Proporciona la fecha desde la cual desea que aplique el cambio y el agente registra la solicitud para procesamiento.
+🛡️ Cambio cobertura: De todo riesgo a terceros (desde 01/11/2024)
+📞 Conversación: conv_202 | Fecha: 09/10/2025
+
+**Cesión de derechos:**
+📋 Cesión de derechos
+👤 Cliente: Ana Martín García (DNI: 44556677B)
+🏠 Póliza: HO0420225024935 (Hogar - Mapfre)
+📝 Solicitud: Cliente contacta para tramitar cesión de derechos de su póliza de hogar para garantizar préstamo hipotecario. Proporciona todos los datos necesarios del préstamo y la entidad bancaria para proceder con la cesión.
+🏦 Entidad: Banco Santander - Préstamo 200.000€ (Exp: 12345678)
+📞 Conversación: conv_303 | Fecha: 09/10/2025
+
+**Cesión de derechos datos incompletos:**
+📋 Cesión de derechos datos incompletos
+👤 Cliente: Pedro López Ruiz (DNI: 33445566A)
+🏠 Póliza: HO0420225024936 (Hogar - Reale)
+📝 Solicitud: Cliente contacta solicitando cesión de derechos para préstamo hipotecario pero no dispone de los datos necesarios del préstamo. El agente le indica que debe contactar con su banco para obtener la información completa y volver a llamar.
+⚠️ Faltan datos: Entidad bancaria, importe del préstamo, número de expediente
+📞 Conversación: conv_404 | Fecha: 09/10/2025
 
 ---
 
@@ -614,6 +754,7 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
   "metadata": {
     "confidence": 0.95,
     "processingRecommendation": "NARRATIVA DETALLADA: El usuario contactó para [motivo principal]. Durante la conversación [describir qué pasó paso a paso]. [Explicar el resultado final y por qué se clasificó así]. [Mencionar datos relevantes extraídos].",
+    "ticketNotes": "Notas descriptivas para el ticket: Incluir datos del cliente (nombre, DNI, póliza) + descripción de lo que solicitó y cómo se desarrolló la conversación + información específica nueva (fecha, cuenta, dirección, etc.) en formato claro y estructurado",
     "warnings": ["advertencias si las hay"],
     "toolResultsFound": true,
     "clientSearchResults": "resumen de lo encontrado en tool_results"
@@ -660,7 +801,7 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
       
     } catch (error) {
       console.error(`❌ [DECISION ENGINE] Error en análisis:`, error);
-      return this.createFallbackDecision(conversationId);
+      return this.createFallbackDecision(conversationId, transcripts);
     }
   }
   
@@ -735,6 +876,7 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
       metadata: {
         confidence: Math.max(0, Math.min(1, decision.metadata?.confidence || 0.5)),
         processingRecommendation: decision.metadata?.processingRecommendation || 'Procesar según análisis estándar',
+        ticketNotes: decision.metadata?.ticketNotes,
         warnings: decision.metadata?.warnings || [],
         toolResultsFound: decision.metadata?.toolResultsFound || false,
         clientSearchResults: decision.metadata?.clientSearchResults
@@ -768,7 +910,73 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
   /**
    * 🔄 Crear decisión fallback para casos de error
    */
-  private createFallbackDecision(conversationId: string): CallDecision {
+  private createFallbackDecision(conversationId: string, transcripts?: CallTranscript[]): CallDecision {
+    // Intentar detectar patrones básicos sin LLM
+    let type = 'Llamada gestión comercial';
+    let reason = 'Consulta cliente';
+    let description = 'Gestión telefónica procesada con datos limitados';
+    
+    if (transcripts) {
+      const fullText = transcripts
+        .map(t => t.message)
+        .join(' ')
+        .toLowerCase();
+      
+      // Detectar cambio de fecha de efecto
+      if (fullText.includes('cambiar') && 
+          (fullText.includes('fecha') || fullText.includes('efecto') || fullText.includes('vigor'))) {
+        type = 'Modificación póliza emitida';
+        reason = 'Cambio fecha de efecto';
+        description = 'Cliente solicita cambio de fecha de entrada en vigor';
+      }
+      // Detectar duplicado tarjeta
+      else if (fullText.includes('duplicado') && fullText.includes('tarjeta')) {
+        type = 'Solicitud duplicado póliza';
+        reason = 'Duplicado Tarjeta';
+        description = 'Cliente solicita duplicado de tarjeta de seguro';
+      }
+      // Detectar modificación de asegurados
+      else if ((fullText.includes('incluir') || fullText.includes('añadir') || fullText.includes('agregar') || 
+                fullText.includes('excluir') || fullText.includes('quitar') || fullText.includes('eliminar')) &&
+               (fullText.includes('hijo') || fullText.includes('esposa') || fullText.includes('familiar') || 
+                fullText.includes('asegurado') || fullText.includes('beneficiario'))) {
+        type = 'Modificación póliza emitida';
+        reason = 'Modificación nº asegurados';
+        description = 'Cliente solicita incluir o excluir asegurados en la póliza';
+      }
+      // Detectar modificación de coberturas
+      else if ((fullText.includes('cambiar') || fullText.includes('modificar')) &&
+               (fullText.includes('cobertura') || fullText.includes('coberturas')) &&
+               (fullText.includes('todo riesgo') || fullText.includes('terceros') || fullText.includes('ampliar') || fullText.includes('reducir'))) {
+        type = 'Modificación póliza emitida';
+        reason = 'Modificación coberturas';
+        description = 'Cliente solicita cambiar las coberturas de su póliza';
+      }
+      // Detectar cesión de derechos con datos
+      else if ((fullText.includes('cesión') || fullText.includes('ceder')) &&
+               (fullText.includes('préstamo') || fullText.includes('hipoteca')) &&
+               (fullText.includes('banco') || fullText.includes('euros') || fullText.includes('número') || fullText.includes('expediente'))) {
+        type = 'Modificación póliza emitida';
+        reason = 'Cesión de derechos';
+        description = 'Cliente solicita cesión de derechos con datos del préstamo';
+      }
+      // Detectar cesión de derechos sin datos
+      else if ((fullText.includes('cesión') || fullText.includes('ceder')) &&
+               (fullText.includes('préstamo') || fullText.includes('hipoteca')) &&
+               (fullText.includes('no tengo') || fullText.includes('no sé') || fullText.includes('dijeron que llamara'))) {
+        type = 'Modificación póliza emitida';
+        reason = 'Cesión de derechos datos incompletos';
+        description = 'Cliente solicita cesión de derechos pero no tiene los datos necesarios';
+      }
+      // Detectar nueva contratación
+      else if (fullText.includes('contratar') || fullText.includes('nueva contratación') || 
+               fullText.includes('nuevo seguro')) {
+        type = 'Nueva contratación de seguros';
+        reason = 'Contratación Póliza';
+        description = 'Cliente solicita contratar nuevo seguro';
+      }
+    }
+    
     return {
       clientInfo: {
         clientType: 'unknown',
@@ -776,9 +984,9 @@ AGENT: "Lo siento, no tengo acceso a esa información ahora mismo. Tomo nota y u
       },
       incidentAnalysis: {
         primaryIncident: {
-          type: 'Llamada gestión comercial',
-          reason: 'Consulta cliente',
-          description: 'Gestión telefónica procesada con datos limitados',
+          type,
+          reason,
+          description,
           confidence: 0.3
         },
         followUpInfo: {

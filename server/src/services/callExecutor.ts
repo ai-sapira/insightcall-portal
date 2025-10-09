@@ -436,9 +436,15 @@ export class CallExecutor {
   }
 
   /**
-   * Generar notas para ticket - VERSIÓN MEJORADA PARA TODOS LOS CASOS
+   * Generar notas para ticket - USA LAS NOTAS GENERADAS POR EL LLM
    */
   private generateTicketNotes(decision: CallDecision, call: Call): string {
+    // Priorizar las notas generadas por el LLM si existen
+    if (decision.metadata?.ticketNotes) {
+      return decision.metadata.ticketNotes;
+    }
+    
+    // Fallback al método anterior si no hay notas del LLM
     const incident = decision.incidentAnalysis.primaryIncident;
     const extractedData = decision.clientInfo.extractedData;
     
