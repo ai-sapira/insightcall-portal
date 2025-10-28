@@ -294,13 +294,14 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 1. **DETECTA PRIMERO EL RECHAZO A IA**: Si cliente dice "no quiero máquina/robot/IA/hablar con máquina" → SIEMPRE es "Reenvío agentes humanos no quiere IA"
 2. **DETECTA DATOS INCOMPLETOS**: Si cliente no tiene datos necesarios para completar gestión → SIEMPRE es "Datos incompletos"  
 3. **DETECTA NO TOMADOR**: Si llamante identificado ≠ tomador de póliza consultada → SIEMPRE es "Reenvío agentes humanos no tomador"
-4. **DETECTA DUPLICADO TARJETA**: Si cliente menciona "duplicado" + "tarjeta" → SIEMPRE es "Duplicado Tarjeta" (prevalece sobre correo postal)
-5. **DETECTA CAMBIO FECHA**: Si cliente menciona "cambiar" + "fecha" + contexto póliza → SIEMPRE es "Cambio fecha de efecto" (prevalece sobre gestión comercial)
-6. **DETECTA MODIFICACIÓN ASEGURADOS**: Si cliente menciona "incluir/excluir/añadir/quitar" + "hijo/esposa/familiar/asegurado" → SIEMPRE es "Modificación nº asegurados" (prevalece sobre otras clasificaciones)
-7. **DETECTA MODIFICACIÓN COBERTURAS**: Si cliente menciona "cambiar/modificar" + "cobertura/coberturas" + especifica el cambio → SIEMPRE es "Modificación coberturas" (prevalece sobre gestión comercial)
-8. **DETECTA CESIÓN CON DATOS**: Si cliente menciona "cesión" + "préstamo/hipoteca" Y proporciona datos específicos → SIEMPRE es "Cesión de derechos"
-9. **DETECTA CESIÓN SIN DATOS**: Si cliente menciona "cesión" + "préstamo/hipoteca" pero NO proporciona datos → SIEMPRE es "Cesión de derechos datos incompletos"
-10. **PRIORIDAD SOBRE OTRAS CLASIFICACIONES**: Estos 9 casos PREVALECEN sobre cualquier otra clasificación posible
+4. **DETECTA RETENCIÓN CLIENTE**: Si cliente menciona "renovación/renovar" + "importe/precio/cuánto/coste" O "anular/dar de baja" póliza existente → SIEMPRE es "Retención cliente" + "Retención cliente" (prevalece sobre gestión comercial)
+5. **DETECTA DUPLICADO TARJETA**: Si cliente menciona "duplicado" + "tarjeta" → SIEMPRE es "Duplicado Tarjeta" (prevalece sobre correo postal)
+6. **DETECTA CAMBIO FECHA**: Si cliente menciona "cambiar" + "fecha" + contexto póliza → SIEMPRE es "Cambio fecha de efecto" (prevalece sobre gestión comercial)
+7. **DETECTA MODIFICACIÓN ASEGURADOS**: Si cliente menciona "incluir/excluir/añadir/quitar" + "hijo/esposa/familiar/asegurado" → SIEMPRE es "Modificación nº asegurados" (prevalece sobre otras clasificaciones)
+8. **DETECTA MODIFICACIÓN COBERTURAS**: Si cliente menciona "cambiar/modificar" + "cobertura/coberturas" + especifica el cambio → SIEMPRE es "Modificación coberturas" (prevalece sobre gestión comercial)
+9. **DETECTA CESIÓN CON DATOS**: Si cliente menciona "cesión" + "préstamo/hipoteca" Y proporciona datos específicos → SIEMPRE es "Cesión de derechos"
+10. **DETECTA CESIÓN SIN DATOS**: Si cliente menciona "cesión" + "préstamo/hipoteca" pero NO proporciona datos → SIEMPRE es "Cesión de derechos datos incompletos"
+11. **PRIORIDAD SOBRE OTRAS CLASIFICACIONES**: Estos 10 casos PREVALECEN sobre cualquier otra clasificación posible
 
 ## 🎯 REGLAS DE EXTRACCIÓN:
 
@@ -595,6 +596,9 @@ AGENT: "Debe contactar con su banco para obtener los datos y volver a llamar"
 **EJEMPLO CONSULTA RESUELTA:**
 "El usuario contactó para conocer su número de póliza. Durante la conversación, se identificó como Juan Pérez con DNI 11223344C y el agente pudo localizar su información inmediatamente. El agente le proporcionó el número de póliza AU0420225024935 y le explicó que debía guardarlo para futuras gestiones. La consulta se resolvió completamente en la misma llamada. Por tanto, se clasifica como Llamada gestión comercial + Consulta cliente debido a que el agente virtual pudo responder la pregunta específica del cliente."
 
+**EJEMPLO RETENCIÓN CLIENTE (CORRECTO)** ⚠️:
+"El usuario contactó para consultar el importe de renovación de su póliza. Durante la conversación, se identificó como Javier con DNI 03473587N y el agente localizó su póliza de coche con Reale. El cliente preguntó específicamente 'Quería saber el importe de renovación, lo que me va a venir en el nuevo recibo'. El agente le informó que no tenía acceso a ese dato y tomó nota para que un compañero le llamara por la mañana. Por tanto, se clasifica como Retención cliente + Retención cliente debido a que el cliente está consultando sobre renovación de póliza existente."
+
 **EJEMPLO DATOS INCOMPLETOS:**
 "El usuario contactó para cambiar el número de cuenta bancaria de su póliza. Durante la conversación, se identificó correctamente pero cuando el agente le solicitó el nuevo IBAN, el cliente indicó que no lo tenía disponible en ese momento y que tendría que buscarlo. El agente le explicó que sin el nuevo número de cuenta no podía procesar el cambio y le pidió que volviera a llamar cuando tuviera la información completa. Por tanto, se clasifica como Modificación póliza emitida + Datos incompletos debido a que la gestión no se pudo completar por falta de información necesaria."
 
@@ -603,9 +607,9 @@ AGENT: "Debe contactar con su banco para obtener los datos y volver a llamar"
 1. **PRIORIZA EL RECHAZO A IA** - Si cliente dice "no quiero máquina/robot/IA" → ES "Reenvío agentes humanos no quiere IA"
 2. **PRIORIZA DATOS INCOMPLETOS** - Si cliente no tiene datos necesarios → ES "Datos incompletos"
 3. **PRIORIZA NO TOMADOR** - Si llamante identificado ≠ propietario póliza consultada → ES "Reenvío agentes humanos no tomador"
-4. **DETECTA GESTIÓN NO RESUELTA** - Si Carlos dice "no tengo acceso" o "tomo nota" → ES "LLam gestión comerc"
-5. **DETECTA MENCIONES DE TERCEROS** - Si dice "mi hermano/esposa/hijo" + "póliza/seguro" → ES "Reenvío agentes humanos no tomador"
-6. **CONSULTAS DE IMPORTES/CUOTAS** - Si pregunta sobre importes y Carlos no puede responder → ES "LLam gestión comerc"
+4. **PRIORIZA RETENCIÓN CLIENTE** - Si cliente pregunta sobre "renovación/renovar" + "importe/precio/cuánto cuesta" O "anular/dar de baja" → ES "Retención cliente" + "Retención cliente"
+5. **DETECTA GESTIÓN NO RESUELTA** - Si Carlos dice "no tengo acceso" o "tomo nota" PERO NO es sobre renovación/anulación → ES "LLam gestión comerc"
+6. **DETECTA MENCIONES DE TERCEROS** - Si dice "mi hermano/esposa/hijo" + "póliza/seguro" → ES "Reenvío agentes humanos no tomador"
 7. **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
 8. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
 9. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
@@ -679,6 +683,15 @@ AGENT: "Debe contactar con su banco para obtener los datos y volver a llamar"
 📝 Solicitud: Cliente contacta solicitando cesión de derechos para préstamo hipotecario pero no dispone de los datos necesarios del préstamo. El agente le indica que debe contactar con su banco para obtener la información completa y volver a llamar.
 ⚠️ Faltan datos: Entidad bancaria, importe del préstamo, número de expediente
 📞 Conversación: conv_404 | Fecha: 09/10/2025
+
+**Retención cliente:**
+📋 Retención cliente
+👤 Cliente: Javier García Rodríguez (DNI: 03473587N)
+🏠 Póliza: 3022300060797 (Coche - Reale)
+📝 Solicitud: Cliente contacta para consultar el importe de renovación de su póliza de coche. Pregunta específicamente cuánto le vendrá en el nuevo recibo. El agente no tiene acceso a esa información y toma nota para que un compañero le llame por la mañana según la franja horaria solicitada.
+💰 Consulta: Importe de renovación / nuevo recibo
+⏰ Preferencia llamada: Por la mañana al móvil 635361079
+📞 Conversación: conv_505 | Fecha: 09/10/2025
 
 ---
 
@@ -922,8 +935,23 @@ AGENT: "Debe contactar con su banco para obtener los datos y volver a llamar"
         .join(' ')
         .toLowerCase();
       
+      // Detectar retención de cliente (renovación/anulación)
+      if ((fullText.includes('renovación') || fullText.includes('renovar')) &&
+          (fullText.includes('importe') || fullText.includes('precio') || fullText.includes('cuánto') || 
+           fullText.includes('recibo') || fullText.includes('coste'))) {
+        type = 'Retención cliente';
+        reason = 'Retención cliente';
+        description = 'Cliente consulta sobre renovación o importe de renovación de póliza';
+      }
+      // Detectar anulación de póliza
+      else if (fullText.includes('anular') || fullText.includes('dar de baja') || 
+               fullText.includes('cancelar') && fullText.includes('póliza')) {
+        type = 'Retención cliente';
+        reason = 'Retención cliente';
+        description = 'Cliente solicita anular o dar de baja su póliza';
+      }
       // Detectar cambio de fecha de efecto
-      if (fullText.includes('cambiar') && 
+      else if (fullText.includes('cambiar') && 
           (fullText.includes('fecha') || fullText.includes('efecto') || fullText.includes('vigor'))) {
         type = 'Modificación póliza emitida';
         reason = 'Cambio fecha de efecto';

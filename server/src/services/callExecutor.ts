@@ -430,9 +430,9 @@ export class CallExecutor {
    * Generar ID único para cliente
    */
   private generateClientId(): string {
-    const timestamp = Date.now().toString().substring(-6); // Últimos 6 dígitos
-    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-    return `${timestamp}${random}F00`;
+    const timestamp = Date.now().toString().slice(-4); // Últimos 4 dígitos
+    const random = Math.random().toString(36).substring(2, 4).toUpperCase();
+    return `${timestamp}${random}F01`;
   }
 
   /**
