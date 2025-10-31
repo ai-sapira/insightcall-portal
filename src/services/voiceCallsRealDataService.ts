@@ -157,8 +157,11 @@ class VoiceCallsRealDataService {
     try {
       console.log(`🔍 Obteniendo ${limit} llamadas recientes de calls con información de tickets...`);
       
+      // 🔒 FILTRO: Solo mostrar llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_0301k5vnqdzner7tp47g5wgnea3w';
+      
       // Consulta optimizada con información de tickets
-      const { data, error } = await supabase
+      let query = supabase
         .from('calls')
         .select(`
           *,
@@ -169,7 +172,12 @@ class VoiceCallsRealDataService {
           )
         `)
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(limit)
+        .eq('agent_id', NOGAL_AGENT_ID);
+      
+      console.log(`🔒 [FILTER] Filtrando por agent_id: ${NOGAL_AGENT_ID}`);
+      
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error obteniendo llamadas:', error);
@@ -255,9 +263,17 @@ class VoiceCallsRealDataService {
     try {
       console.log('📊 Calculando estadísticas de calls...');
       
-      const { data, error } = await supabase
+      // 🔒 FILTRO: Solo contar llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_0301k5vnqdzner7tp47g5wgnea3w';
+      
+      let query = supabase
         .from('calls')
-        .select('duration_seconds');
+        .select('duration_seconds')
+        .eq('agent_id', NOGAL_AGENT_ID);
+      
+      console.log(`🔒 [FILTER] Filtrando estadísticas por agent_id: ${NOGAL_AGENT_ID}`);
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error obteniendo estadísticas:', error);
@@ -608,6 +624,8 @@ class VoiceCallsRealDataService {
       const offset = (page - 1) * limit;
       
       // Construir query base
+      const NOGAL_AGENT_ID = 'agent_0301k5vnqdzner7tp47g5wgnea3w';
+      
       let query = supabase
         .from('calls')
         .select(`
@@ -618,11 +636,15 @@ class VoiceCallsRealDataService {
             metadata
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .eq('agent_id', NOGAL_AGENT_ID);
 
       let countQuery = supabase
         .from('calls')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .eq('agent_id', NOGAL_AGENT_ID);
+
+      console.log(`🔒 [FILTER] Filtrando por agent_id: ${NOGAL_AGENT_ID}`);
 
       // Aplicar filtros de búsqueda
       if (filters?.search) {

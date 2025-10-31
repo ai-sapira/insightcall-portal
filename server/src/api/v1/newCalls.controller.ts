@@ -96,6 +96,7 @@ export class NewCallsController {
         query = query.eq('status', status);
       }
       if (agent_id) {
+        // Si se especifica un agent_id específico en query params, lo aplicamos además del filtro base
         query = query.eq('agent_id', agent_id);
       }
       if (req.query.analysis_completed !== undefined) {

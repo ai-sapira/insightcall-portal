@@ -45,6 +45,7 @@ export class CallDataService {
       }
       
       if (filters?.agent_id) {
+        // Si se especifica un agent_id específico en filtros, lo aplicamos además del filtro base
         query = query.eq('agent_id', filters.agent_id);
       }
       

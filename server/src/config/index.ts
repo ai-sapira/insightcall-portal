@@ -22,6 +22,9 @@ interface Config {
   nogalApiBaseUrl: string;
   nogalApiTimeout: number;
   nogalApiKey?: string;
+  
+  // ElevenLabs Agent Filter
+  elevenlabsAgentId?: string; // Agent ID de ElevenLabs para filtrar llamadas de Nogal
 }
 
 // Helper function to get required environment variables
@@ -63,6 +66,9 @@ const config: Config = {
   nogalApiBaseUrl: getOptionalEnvVar('NOGAL_API_BASE_URL', 'https://api.nogal.app/v1'),
   nogalApiTimeout: parseInt(getOptionalEnvVar('NOGAL_API_TIMEOUT', '30000')),
   nogalApiKey: getOptionalEnvVar('NOGAL_API_KEY'),
+  
+  // ElevenLabs Agent Filter
+  elevenlabsAgentId: getOptionalEnvVar('ELEVENLABS_AGENT_ID'),
 };
 
 export default config; 
