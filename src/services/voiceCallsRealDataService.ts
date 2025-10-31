@@ -646,11 +646,12 @@ class VoiceCallsRealDataService {
 
       console.log(`🔒 [FILTER] Filtrando por agent_id: ${NOGAL_AGENT_ID}`);
 
-      // Aplicar filtros de búsqueda
+      // Aplicar filtros de búsqueda (después del filtro de agent_id para asegurar que se mantenga)
       if (filters?.search) {
         const searchTerm = `%${filters.search}%`;
-        query = query.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm},agent_id.ilike.${searchTerm}`);
-        countQuery = countQuery.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm},agent_id.ilike.${searchTerm}`);
+        // Buscar solo en conversation_id y segurneo_call_id, ya que agent_id ya está filtrado
+        query = query.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm}`);
+        countQuery = countQuery.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm}`);
       }
 
       // 📞 NUEVO: Filtro por caller_id
@@ -687,6 +688,10 @@ class VoiceCallsRealDataService {
         }
       }
 
+      // 🔒 ASEGURAR que el filtro de agent_id siempre esté aplicado (después de todos los filtros)
+      query = query.eq('agent_id', NOGAL_AGENT_ID);
+      countQuery = countQuery.eq('agent_id', NOGAL_AGENT_ID);
+
       // Ejecutar conteo con filtros
       const { count, error: countError } = await countQuery;
       
@@ -697,6 +702,17 @@ class VoiceCallsRealDataService {
       
       // Ejecutar consulta paginada con filtros
       const { data, error } = await query.range(offset, offset + limit - 1);
+      
+      // 🔍 DEBUG: Verificar que todas las llamadas tienen el agent_id correcto
+      if (data && data.length > 0) {
+        const wrongAgentIds = data.filter(call => call.agent_id !== NOGAL_AGENT_ID);
+        if (wrongAgentIds.length > 0) {
+          console.error(`❌ [FILTER] Se encontraron ${wrongAgentIds.length} llamadas con agent_id incorrecto:`, 
+            wrongAgentIds.map(c => ({ id: c.id, agent_id: c.agent_id })));
+        } else {
+          console.log(`✅ [FILTER] Todas las ${data.length} llamadas tienen el agent_id correcto`);
+        }
+      }
       
       if (error) {
         console.error('❌ [PAGINATION] Error en consulta paginada:', error);

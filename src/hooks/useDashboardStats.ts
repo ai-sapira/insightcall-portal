@@ -77,6 +77,9 @@ export function useDashboardStats(period: 'today' | 'week' | 'month' = 'month') 
 
       const { startDate, endDate } = calculateDateRange(period);
       
+      // 🔒 FILTRO: Solo contar llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_0301k5vnqdzner7tp47g5wgnea3w';
+      
       // Obtener datos del período actual
       const { data: currentCalls, error: currentError } = await supabase
         .from('calls')
@@ -92,6 +95,7 @@ export function useDashboardStats(period: 'today' | 'week' | 'month' = 'month') 
           start_time,
           created_at
         `)
+        .eq('agent_id', NOGAL_AGENT_ID)
         .gte('start_time', startDate)
         .lte('start_time', endDate)
         .order('start_time', { ascending: false });
@@ -105,9 +109,13 @@ export function useDashboardStats(period: 'today' | 'week' | 'month' = 'month') 
       
       previousStartDate.setDate(previousStartDate.getDate() - periodDays);
       
+      // 🔒 FILTRO: Solo contar llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_0301k5vnqdzner7tp47g5wgnea3w';
+      
       const { data: previousCalls, error: previousError } = await supabase
         .from('calls')
         .select('id, duration_seconds, call_successful, tickets_created')
+        .eq('agent_id', NOGAL_AGENT_ID)
         .gte('start_time', previousStartDate.toISOString())
         .lt('start_time', startDate);
 
