@@ -158,7 +158,7 @@ class VoiceCallsRealDataService {
       console.log(`🔍 Obteniendo ${limit} llamadas recientes de calls con información de tickets...`);
       
       // 🔒 FILTRO: Solo mostrar llamadas del agente de Nogal
-      const NOGAL_AGENT_ID = 'agent_0301k5vnqdzner7tp47g5wgnea3w';
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
       
       // Consulta optimizada con información de tickets
       let query = supabase
@@ -264,7 +264,7 @@ class VoiceCallsRealDataService {
       console.log('📊 Calculando estadísticas de calls...');
       
       // 🔒 FILTRO: Solo contar llamadas del agente de Nogal
-      const NOGAL_AGENT_ID = 'agent_0301k5vnqdzner7tp47g5wgnea3w';
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
       
       let query = supabase
         .from('calls')
@@ -306,11 +306,15 @@ class VoiceCallsRealDataService {
     try {
       console.log(`🔍 Buscando transcripciones REALES para conversationId: ${conversationId}`);
       
+      // 🔒 FILTRO: Solo obtener transcripciones del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
+      
       // Buscar en la tabla calls por conversation_id
       const { data: call, error } = await supabase
         .from('calls')
         .select('transcripts')
         .eq('conversation_id', conversationId)
+        .eq('agent_id', NOGAL_AGENT_ID)
         .single();
 
       if (error || !call) {
@@ -354,10 +358,14 @@ class VoiceCallsRealDataService {
     try {
       console.log(`🧠 Buscando análisis REAL de IA para: ${conversationId}`);
       
+      // 🔒 FILTRO: Solo obtener análisis del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
+      
       const { data: call, error } = await supabase
         .from('calls')
         .select('ai_analysis')
         .eq('conversation_id', conversationId)
+        .eq('agent_id', NOGAL_AGENT_ID)
         .single();
 
       if (error || !call) {
@@ -402,11 +410,15 @@ class VoiceCallsRealDataService {
     try {
       console.log(`🎫 Buscando tickets REALES para: ${conversationId}`);
       
+      // 🔒 FILTRO: Solo obtener tickets de llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
+      
       // Primero obtener el ID de la llamada desde calls
       const { data: call, error: callError } = await supabase
         .from('calls')
         .select('id')
         .eq('conversation_id', conversationId)
+        .eq('agent_id', NOGAL_AGENT_ID)
         .single();
 
       if (callError || !call) {
@@ -484,11 +496,15 @@ class VoiceCallsRealDataService {
     try {
       console.log(`🔍 Obteniendo detalles REALES para: ${segurneoCallId}`);
       
+      // 🔒 FILTRO: Solo obtener llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
+      
       // 1. Obtener datos básicos de calls
       const { data: voiceCallData, error: voiceCallError } = await supabase
         .from('calls')
         .select('*')
         .eq('segurneo_call_id', segurneoCallId)
+        .eq('agent_id', NOGAL_AGENT_ID)
         .single();
 
       if (voiceCallError || !voiceCallData) {
@@ -624,7 +640,7 @@ class VoiceCallsRealDataService {
       const offset = (page - 1) * limit;
       
       // Construir query base
-      const NOGAL_AGENT_ID = 'agent_0301k5vnqdzner7tp47g5wgnea3w';
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
       
       let query = supabase
         .from('calls')
@@ -687,10 +703,6 @@ class VoiceCallsRealDataService {
           countQuery = countQuery.gte('start_time', startDateISO);
         }
       }
-
-      // 🔒 ASEGURAR que el filtro de agent_id siempre esté aplicado (después de todos los filtros)
-      query = query.eq('agent_id', NOGAL_AGENT_ID);
-      countQuery = countQuery.eq('agent_id', NOGAL_AGENT_ID);
 
       // Ejecutar conteo con filtros
       const { count, error: countError } = await countQuery;

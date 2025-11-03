@@ -112,11 +112,14 @@ export class ExportService {
       console.log(`🎫 [EXPORT] Obtenidos ${ticketsData.length} tickets`);
       
       // 3. Obtener análisis de IA y datos de clientes para todas las llamadas
+      // 🔒 FILTRO: Solo obtener análisis de llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
       const callIds = calls.map(call => call.id);
       const { data: callsWithAnalysis } = await supabase
         .from('calls')
         .select('id, conversation_id, ai_analysis, transcripts, cost_cents')
-        .in('id', callIds);
+        .in('id', callIds)
+        .eq('agent_id', NOGAL_AGENT_ID);
       
       console.log(`🧠 [EXPORT] Obtenidos análisis para ${callsWithAnalysis?.length || 0} llamadas`);
       
@@ -553,6 +556,9 @@ export class ExportService {
    */
   private async getSpecificCalls(conversationIds: string[]): Promise<VoiceCallReal[]> {
     try {
+      // 🔒 FILTRO: Solo obtener llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
+      
       // Consulta directa por conversation_ids específicos CON JOIN de tickets
       const { data: callsData, error } = await supabase
         .from('calls')
@@ -570,6 +576,7 @@ export class ExportService {
           )
         `)
         .in('conversation_id', conversationIds)
+        .eq('agent_id', NOGAL_AGENT_ID)
         .order('start_time', { ascending: false });
 
       if (error) {
