@@ -88,18 +88,82 @@ const AcceptInvitePage = () => {
   };
 
   useEffect(() => {
+    // Process the access token from URL hash if present
+    const processAccessToken = async () => {
+      const hash = window.location.hash;
+      const accessTokenMatch = hash.match(/access_token=([^&]+)/);
+      
+      if (accessTokenMatch) {
+        console.log('[AcceptInvite] Processing access token from URL hash');
+        
+        // Extract token and refresh token from hash
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const expiresIn = hashParams.get('expires_in');
+        const tokenType = hashParams.get('token_type') || 'bearer';
+        
+        if (accessToken) {
+          try {
+            // Try to set the session explicitly with the access token
+            const { data: { session }, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+            
+            console.log('[AcceptInvite] Session after setSession:', session?.user?.email || 'none', error);
+            
+            if (session?.user) {
+              setEmail(session.user.email || null);
+              setToken('authenticated');
+              // Clean up the hash from URL after processing
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+              return;
+            }
+            
+            if (error) {
+              console.error('[AcceptInvite] Error setting session:', error);
+              // Fallback: try getSession() in case Supabase processed it automatically
+              await new Promise(resolve => setTimeout(resolve, 200));
+              const { data: { session: fallbackSession } } = await supabase.auth.getSession();
+              if (fallbackSession?.user) {
+                setEmail(fallbackSession.user.email || null);
+                setToken('authenticated');
+                // Clean up the hash from URL after processing
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+              }
+            }
+          } catch (err) {
+            console.error('[AcceptInvite] Error processing access token:', err);
+            // Fallback: check if Supabase processed it automatically
+            await new Promise(resolve => setTimeout(resolve, 200));
+            const { data: { session: fallbackSession } } = await supabase.auth.getSession();
+            if (fallbackSession?.user) {
+              setEmail(fallbackSession.user.email || null);
+              setToken('authenticated');
+              // Clean up the hash from URL after processing
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+          }
+        }
+      }
+    };
+
     // Check if user is already authenticated (Supabase might have auto-authenticated from the invite link)
     const checkSession = async () => {
+      // First, try to process any token in the URL
+      await processAccessToken();
+      
+      // Then check current session
       const { data: { session } } = await supabase.auth.getSession();
       console.log('[AcceptInvite] Current session:', session?.user?.email || 'none');
       
       if (session?.user) {
         setEmail(session.user.email || null);
-        // If user is authenticated and email is confirmed, they might already have a password
-        // But if they're here, they probably need to set one
-        // Don't auto-redirect, let them set password
+        setToken('authenticated');
       }
     };
+    
     checkSession();
 
     // Listen for auth state changes (Supabase might authenticate when clicking invite link)
@@ -108,6 +172,7 @@ const AcceptInvitePage = () => {
       
       if (event === 'SIGNED_IN' && session?.user) {
         setEmail(session.user.email || null);
+        setToken('authenticated');
         // Don't auto-redirect, let them set password first
       }
       
@@ -180,29 +245,48 @@ const AcceptInvitePage = () => {
       const tokenHashMatch = hash.match(/token_hash=([^&]+)/) || search.match(/token_hash=([^&]+)/);
       const typeMatch = hash.match(/type=([^&]+)/) || search.match(/type=([^&]+)/);
       
-      // If we have an access_token in hash, Supabase should have auto-authenticated
-      // But if not, try to use it to sign in
+      // If we have an access_token in hash, try to process it explicitly
       if (accessTokenMatch) {
-        console.log('[AcceptInvite] Access token found, Supabase should handle this automatically');
-        // Wait a bit for Supabase to process the token
-        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('[AcceptInvite] Access token found, processing...');
         
-        const { data: { session: newSession } } = await supabase.auth.getSession();
-        if (newSession?.user) {
-          // Now authenticated, update password
-          const { error: updateError } = await supabase.auth.updateUser({
-            password: password,
-          });
-
-          if (updateError) {
-            throw updateError;
+        // Extract the full hash parameters
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const tokenType = hashParams.get('token_type') || 'bearer';
+        const type = hashParams.get('type');
+        
+        if (accessToken) {
+          // Try to set the session using the access token
+          // Supabase should have processed this automatically, but let's verify
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('[AcceptInvite] Error getting session:', sessionError);
           }
+          
+          if (newSession?.user) {
+            console.log('[AcceptInvite] Session found after processing access token');
+            // Now authenticated, update password
+            const { error: updateError } = await supabase.auth.updateUser({
+              password: password,
+            });
 
-          setSuccess(true);
-          setTimeout(() => {
-            navigate('/');
-          }, 2000);
-          return;
+            if (updateError) {
+              throw updateError;
+            }
+
+            setSuccess(true);
+            setTimeout(() => {
+              navigate('/');
+            }, 2000);
+            return;
+          } else {
+            console.log('[AcceptInvite] No session found, token may need explicit verification');
+            // The token might need to be verified differently
+            // For invite tokens, we might need to use verifyOtp instead
+          }
         }
       }
       
