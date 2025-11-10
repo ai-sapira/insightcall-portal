@@ -79,6 +79,30 @@ class UserService {
         headers,
       });
 
+      // Check if response is HTML (common when API endpoint doesn't exist)
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await response.text();
+        if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+          console.warn('[UserService] Received HTML instead of JSON. API endpoint may not be available.');
+          throw new Error(
+            `El endpoint de usuarios no está disponible. ` +
+            `Verifica que VITE_API_URL esté configurada correctamente ` +
+            `(actualmente: ${API_BASE_URL || 'no configurada'})`
+          );
+        }
+        // If it's not HTML but also not JSON, try to parse as JSON anyway
+        try {
+          const result: ApiResponse<UserListItem[]> = JSON.parse(text);
+          if (!result.success || !result.data) {
+            throw new Error(result.message || result.error || 'Error al obtener usuarios');
+          }
+          return result.data;
+        } catch (parseError) {
+          throw new Error(`Respuesta inválida del servidor: ${response.status} ${response.statusText}`);
+        }
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.message || errorData.error || `Error ${response.status}: ${response.statusText}`;
@@ -103,6 +127,11 @@ class UserService {
           `Verifica que el servidor esté corriendo en ${API_BASE_URL} ` +
           `y que la variable VITE_API_URL esté configurada correctamente.`
         );
+      }
+      
+      // Re-throw if it's already a formatted error
+      if (err instanceof Error && err.message.includes('no está disponible')) {
+        throw err;
       }
       
       throw err instanceof Error ? err : new Error('Error al listar usuarios');

@@ -59,16 +59,18 @@ export const UserManagement = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar usuarios';
       console.error('[UserManagement] Error loading users:', err);
-      setError(errorMessage);
       
-      // Show more helpful message if it's a connection error
-      if (errorMessage.includes('No se pudo conectar al servidor')) {
+      // Show more helpful message if it's a connection error or API unavailable
+      if (errorMessage.includes('no está disponible') || errorMessage.includes('No se pudo conectar')) {
         setError(
-          `${errorMessage}\n\n` +
-          `Asegúrate de que:\n` +
-          `1. El servidor esté corriendo (puerto 3000)\n` +
-          `2. La variable VITE_API_URL esté configurada en tu archivo .env`
+          `El servicio de gestión de usuarios no está disponible.\n\n` +
+          `Esto puede deberse a que:\n` +
+          `• El backend no está configurado o no está disponible\n` +
+          `• La variable VITE_API_URL no está configurada en producción\n\n` +
+          `Esta funcionalidad requiere que el backend esté desplegado y accesible.`
         );
+      } else {
+        setError(errorMessage);
       }
     } finally {
       setLoading(false);
