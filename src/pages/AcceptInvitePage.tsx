@@ -254,11 +254,34 @@ const AcceptInvitePage = () => {
         return;
       }
       
-      // No token found at all
-      console.error('[AcceptInvite] No token found in URL');
+      // No token found at all - but maybe Supabase already authenticated
+      // Check session one more time after a short delay
+      console.log('[AcceptInvite] No token found, checking session again...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const { data: { session: finalSession } } = await supabase.auth.getSession();
+      if (finalSession?.user) {
+        console.log('[AcceptInvite] Session found after delay, updating password');
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: password,
+        });
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        setSuccess(true);
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+        return;
+      }
+      
+      // Still no session and no token
+      console.error('[AcceptInvite] No token found in URL and no session');
       throw new Error(
-        'Token de invitación no encontrado en la URL. ' +
-        'Por favor, usa el link completo del email de invitación. ' +
+        'No se pudo verificar la invitación. ' +
+        'Por favor, asegúrate de usar el link completo del email de invitación. ' +
         'Si el problema persiste, solicita una nueva invitación.'
       );
     } catch (err: any) {
@@ -340,7 +363,7 @@ const AcceptInvitePage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
-                  disabled={loading || !token}
+                  disabled={loading}
                   required
                 />
               </div>
@@ -360,7 +383,7 @@ const AcceptInvitePage = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10"
-                  disabled={loading || !token}
+                  disabled={loading}
                   required
                 />
               </div>
