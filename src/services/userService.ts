@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js';
  * In development: uses VITE_API_URL or defaults to localhost:3000
  * In production: uses VITE_API_URL or same origin
  */
-const getApiBaseUrl = (): string => {
+const getApiBaseUrl = (): string | null => {
   // If explicitly set, use it
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
@@ -17,11 +17,17 @@ const getApiBaseUrl = (): string => {
     return 'http://localhost:3000';
   }
   
-  // In production, use same origin (assuming server is proxied or on same domain)
-  return window.location.origin;
+  // In production, use the Render backend URL as default if VITE_API_URL is not set
+  // This allows the app to work even if the env var is not configured
+  return 'https://insightcall-portal.onrender.com';
 };
 
 const API_BASE_URL = getApiBaseUrl();
+
+// Helper to check if backend is available
+export const isBackendAvailable = (): boolean => {
+  return API_BASE_URL !== null && API_BASE_URL !== '';
+};
 
 export interface UserInvitation {
   email: string;
@@ -68,6 +74,15 @@ class UserService {
    * List all users
    */
   async listUsers(): Promise<UserListItem[]> {
+    // Check if backend is available before attempting to connect
+    if (!API_BASE_URL) {
+      throw new Error(
+        `El endpoint de usuarios no está disponible. ` +
+        `El backend no está configurado. ` +
+        `Configura VITE_API_URL en Netlify si necesitas esta funcionalidad.`
+      );
+    }
+
     try {
       const headers = await this.getAuthHeaders();
       const url = `${API_BASE_URL}/api/v1/users`;

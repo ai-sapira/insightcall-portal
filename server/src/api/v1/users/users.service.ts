@@ -66,7 +66,7 @@ class UsersService {
       const { data: { user }, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
         email,
         {
-          redirectTo: redirectTo || `${process.env.FRONTEND_URL || 'https://insightcall-portal.onrender.com'}/accept-invite`,
+          redirectTo: redirectTo || `${process.env.FRONTEND_URL || 'https://insurcall.netlify.app'}/accept-invite`,
         }
       );
 

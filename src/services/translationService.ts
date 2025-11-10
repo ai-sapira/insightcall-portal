@@ -8,12 +8,18 @@ interface TranslationResponse {
 
 class TranslationService {
   private getBaseUrl(): string {
+    // Si está configurada explícitamente, usarla
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    
     // En desarrollo, usar el puerto del servidor backend
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'http://localhost:3000';
     }
-    // En producción, usar el mismo host
-    return window.location.origin;
+    
+    // En producción, usar el backend de Render por defecto
+    return 'https://insightcall-portal.onrender.com';
   }
 
   async translateToSpanish(text: string): Promise<TranslationResponse> {

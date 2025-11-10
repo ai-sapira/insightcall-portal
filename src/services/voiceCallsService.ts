@@ -1,6 +1,21 @@
 import { VoiceCallPayload, VoiceCallResponse, TestScenario } from '@shared/types/voiceCalls.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const getApiBaseUrl = (): string => {
+  // If explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // In development, default to localhost:3000
+  if (import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3000';
+  }
+  
+  // In production, use Render backend as default
+  return 'https://insightcall-portal.onrender.com';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export class VoiceCallsService {
   private baseUrl: string;

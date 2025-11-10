@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { userService } from '@/services/userService';
+import { userService, isBackendAvailable } from '@/services/userService';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,7 @@ export const UserManagement = () => {
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [backendUnavailable, setBackendUnavailable] = useState(false);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -62,15 +63,14 @@ export const UserManagement = () => {
       
       // Show more helpful message if it's a connection error or API unavailable
       if (errorMessage.includes('no está disponible') || errorMessage.includes('No se pudo conectar')) {
-        setError(
-          `El servicio de gestión de usuarios no está disponible.\n\n` +
-          `Esto puede deberse a que:\n` +
-          `• El backend no está configurado o no está disponible\n` +
-          `• La variable VITE_API_URL no está configurada en producción\n\n` +
-          `Esta funcionalidad requiere que el backend esté desplegado y accesible.`
-        );
+        // This is expected if backend is not configured - show info message instead of error
+        console.info('[UserManagement] Backend API not available - this is optional functionality');
+        setUsers([]);
+        setError(null);
+        setBackendUnavailable(true);
       } else {
         setError(errorMessage);
+        setBackendUnavailable(false);
       }
     } finally {
       setLoading(false);
@@ -78,7 +78,15 @@ export const UserManagement = () => {
   };
 
   useEffect(() => {
-    loadUsers();
+    // Solo intentar cargar usuarios si el backend está disponible
+    if (isBackendAvailable()) {
+      loadUsers();
+    } else {
+      // Backend no disponible - marcar como tal sin intentar cargar
+      setLoading(false);
+      setBackendUnavailable(true);
+      console.info('[UserManagement] Backend API not configured - skipping user load');
+    }
   }, []);
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -243,6 +251,16 @@ export const UserManagement = () => {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {backendUnavailable && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            <strong>Función opcional:</strong> La gestión de usuarios requiere que el backend esté desplegado y configurado.
+            Si no necesitas esta funcionalidad, puedes ignorar este mensaje. El resto de la aplicación funciona normalmente.
+          </AlertDescription>
         </Alert>
       )}
 
