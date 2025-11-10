@@ -625,8 +625,7 @@ class VoiceCallsRealDataService {
   async getVoiceCallsPaginated(page: number = 1, limit: number = 10, filters?: {
     status?: 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
     period?: 'all' | 'today' | 'week' | 'month';
-    search?: string;
-    caller_id?: string; // 📞 NUEVO: Filtro por caller ID
+    search?: string; // Búsqueda unificada: ID, conversación, agente, Caller ID
   }): Promise<{
     calls: VoiceCallReal[];
     total: number;
@@ -662,18 +661,12 @@ class VoiceCallsRealDataService {
 
       console.log(`🔒 [FILTER] Filtrando por agent_id: ${NOGAL_AGENT_ID}`);
 
-      // Aplicar filtros de búsqueda (después del filtro de agent_id para asegurar que se mantenga)
+      // Aplicar filtros de búsqueda unificada (después del filtro de agent_id para asegurar que se mantenga)
       if (filters?.search) {
         const searchTerm = `%${filters.search}%`;
-        // Buscar solo en conversation_id y segurneo_call_id, ya que agent_id ya está filtrado
-        query = query.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm}`);
-        countQuery = countQuery.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm}`);
-      }
-
-      // 📞 NUEVO: Filtro por caller_id
-      if (filters?.caller_id) {
-        query = query.eq('caller_id', filters.caller_id);
-        countQuery = countQuery.eq('caller_id', filters.caller_id);
+        // Buscar en conversation_id, segurneo_call_id y caller_id
+        query = query.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm},caller_id.ilike.${searchTerm}`);
+        countQuery = countQuery.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm},caller_id.ilike.${searchTerm}`);
       }
 
       // Filtros de estado eliminados - solo búsqueda y período

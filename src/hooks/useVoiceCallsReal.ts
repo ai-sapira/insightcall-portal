@@ -14,8 +14,7 @@ interface UseVoiceCallsRealReturn {
 type FilterOptions = {
   status?: 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
   period?: 'all' | 'today' | 'week' | 'month';
-  search?: string;
-  caller_id?: string; // 📞 NUEVO: Filtro por caller ID
+  search?: string; // Búsqueda unificada: ID, conversación, agente, Caller ID
 };
 
 // NUEVO TIPO PARA PAGINACIÓN

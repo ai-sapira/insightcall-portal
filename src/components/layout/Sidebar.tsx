@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +32,7 @@ import {
   Settings,
   ShoppingCart,
   Ticket,
+  User,
   Workflow,
 } from "lucide-react";
 
@@ -93,6 +95,11 @@ const navigationData = {
   ],
   settingsNav: [
     {
+      title: "Usuarios",
+      url: "/users",
+      icon: User,
+    },
+    {
       title: "Configuración",
       url: "/settings",
       icon: Settings,
@@ -107,12 +114,22 @@ const navigationData = {
 
 const AppSidebar = () => {
   const location = useLocation();
+  const { user } = useAuth();
 
   const isActive = (url: string) => {
     if (url === '/') {
       return location.pathname === '/';
     }
     return location.pathname.startsWith(url);
+  };
+
+  const getUserInitials = (email: string | undefined) => {
+    if (!email) return 'U';
+    const parts = email.split('@')[0].split('.');
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return email.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -122,8 +139,8 @@ const AppSidebar = () => {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to="/">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <NogalLogo className="size-6" />
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden bg-background">
+                  <NogalLogo className="h-full w-auto object-contain" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Nogal</span>
@@ -237,14 +254,18 @@ const AppSidebar = () => {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src="/avatars/shadcn.jpg" alt="Admin" />
+                <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.email || 'Usuario'} />
                 <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-medium">
-                  NS
+                  {getUserInitials(user?.email)}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Nogal Admin</span>
-                <span className="truncate text-xs text-muted-foreground">admin@nogal.es</span>
+                <span className="truncate font-semibold">
+                  {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario'}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {user?.email || 'No email'}
+                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

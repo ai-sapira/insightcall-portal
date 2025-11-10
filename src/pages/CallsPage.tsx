@@ -18,7 +18,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -79,7 +78,6 @@ type FilterPeriod = 'all' | 'today' | 'week' | 'month';
 interface FilterState {
   period: FilterPeriod;
   search: string;
-  caller_id: string; // 📞 NUEVO: Filtro por caller ID
 }
 
 export default function CallsPage() {
@@ -88,8 +86,7 @@ export default function CallsPage() {
   // Estados locales de filtros - INMUTABLES para evitar re-renders
   const [filters, setFilters] = useState<FilterState>({
     period: 'all',
-    search: '',
-    caller_id: ''
+    search: ''
   });
   
   // Estados de UI
@@ -380,7 +377,7 @@ export default function CallsPage() {
     <DashboardLayout>
       <div className="space-y-6">
       {/* Header Minimalista */}
-      <div className="border-b pb-4">
+      <div className="pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -470,7 +467,7 @@ export default function CallsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg">Filtros y Búsqueda</CardTitle>
+              <CardTitle className="text-lg">Filtros y búsqueda</CardTitle>
               <CardDescription>
                 Filtra y busca llamadas específicas
               </CardDescription>
@@ -485,27 +482,14 @@ export default function CallsPage() {
           {/* Filtros en una sola línea */}
           <div className="flex items-center space-x-4">
             
-            {/* Búsqueda */}
-            <div className="flex-1 max-w-sm">
+            {/* Búsqueda unificada */}
+            <div className="flex-1 max-w-md">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por ID, conversación, agente..."
+                  placeholder="Buscar por ID, conversación, agente, Caller ID..."
                   value={filters.search}
                   onChange={(e) => handleFiltersChange({ search: e.target.value })}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            {/* 📞 NUEVO: Filtro por Caller ID */}
-            <div className="max-w-48">
-              <div className="relative">
-                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Caller ID (ej: +34...)"
-                  value={filters.caller_id}
-                  onChange={(e) => handleFiltersChange({ caller_id: e.target.value })}
                   className="pl-9"
                 />
               </div>

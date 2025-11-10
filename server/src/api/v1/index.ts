@@ -5,6 +5,7 @@ import newCallsRoutes from './newCalls.routes';
 import testAnalysisRoutes from './test-analysis.routes';
 import translationRoutes from './translation.routes';
 import crearTicketRoutes from './crear-ticket.routes';
+import usersRoutes from './users';
 
 const router = Router();
 
@@ -25,6 +26,9 @@ router.use('/crear-ticket', crearTicketRoutes);
 // New Nogal module routes
 router.use('/nogal', nogalRoutes);
 
+// Users management routes
+router.use('/users', usersRoutes);
+
 // Health check for the entire API
 router.get('/health', (req, res) => {
   res.json({
@@ -36,7 +40,8 @@ router.get('/health', (req, res) => {
       translation: 'available',
       ticketCreation: 'available',
       nogal: 'available',
-      newCalls: 'available'
+      newCalls: 'available',
+      users: 'available'
     }
   });
 });
