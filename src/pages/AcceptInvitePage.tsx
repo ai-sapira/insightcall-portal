@@ -24,33 +24,50 @@ const AcceptInvitePage = () => {
     // Supabase redirects with token in hash or query params
     // Format: #access_token=...&token_type=...&type=invite
     // Or: ?token_hash=...&type=invite
+    // Or: #access_token=...&type=invite
     const hash = window.location.hash;
     const search = window.location.search;
+    const fullUrl = window.location.href;
     
-    // Try to get token from hash (most common)
+    console.log('[AcceptInvite] Parsing URL:', { hash, search, fullUrl });
+    
+    // Try to get token from hash (most common for Supabase redirects)
     const accessTokenMatch = hash.match(/access_token=([^&]+)/);
     const tokenHashMatch = hash.match(/token_hash=([^&]+)/) || search.match(/token_hash=([^&]+)/);
     const typeMatch = hash.match(/type=([^&]+)/) || search.match(/type=([^&]+)/);
     
+    // Also check for email in hash or search
+    const emailFromHash = hash.match(/email=([^&]+)/);
+    const emailFromSearch = search.match(/email=([^&]+)/);
+    
     const tokenToUse = accessTokenMatch?.[1] || tokenHashMatch?.[1];
     const tokenType = typeMatch?.[1];
+    const decodedEmail = emailFromHash?.[1] || emailFromSearch?.[1] || searchParams.get('email');
 
-    if (tokenToUse && tokenType === 'invite') {
-      setToken(tokenToUse);
-    } else if (tokenToUse) {
-      // Token exists but type might be different, still try
+    console.log('[AcceptInvite] Parsed values:', { 
+      tokenToUse: tokenToUse ? '***' : null, 
+      tokenType, 
+      decodedEmail 
+    });
+
+    // If we have any token, set it (Supabase might auto-authenticate)
+    if (tokenToUse) {
       setToken(tokenToUse);
     }
 
-    // Try to get email from query params
-    const emailFromQuery = searchParams.get('email');
-    if (emailFromQuery) {
-      setEmail(emailFromQuery);
+    // Set email if found
+    if (decodedEmail) {
+      try {
+        const email = decodeURIComponent(decodedEmail);
+        setEmail(email);
+      } catch {
+        setEmail(decodedEmail);
+      }
     }
 
     // If we have an access_token in hash, Supabase might have already authenticated
     if (accessTokenMatch) {
-      // Supabase client will automatically handle this via onAuthStateChange
+      console.log('[AcceptInvite] Access token found in hash, Supabase will auto-authenticate');
     }
   }, [searchParams]);
 
@@ -74,24 +91,28 @@ const AcceptInvitePage = () => {
     // Check if user is already authenticated (Supabase might have auto-authenticated from the invite link)
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('[AcceptInvite] Current session:', session?.user?.email || 'none');
+      
       if (session?.user) {
         setEmail(session.user.email || null);
-        // If user is authenticated but password not set, they can set it now
-        // If password is already set, redirect to dashboard
-        if (session.user.email_confirmed_at) {
-          navigate('/');
-        }
+        // If user is authenticated and email is confirmed, they might already have a password
+        // But if they're here, they probably need to set one
+        // Don't auto-redirect, let them set password
       }
     };
     checkSession();
 
     // Listen for auth state changes (Supabase might authenticate when clicking invite link)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[AcceptInvite] Auth state changed:', event, session?.user?.email || 'none');
+      
       if (event === 'SIGNED_IN' && session?.user) {
         setEmail(session.user.email || null);
-        if (session.user.email_confirmed_at) {
-          navigate('/');
-        }
+        // Don't auto-redirect, let them set password first
+      }
+      
+      if (event === 'TOKEN_REFRESHED' && session?.user) {
+        setEmail(session.user.email || null);
       }
     });
 
@@ -129,6 +150,7 @@ const AcceptInvitePage = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
+        console.log('[AcceptInvite] User already authenticated, updating password');
         // User is authenticated from the invite link, just update password
         const { error: updateError } = await supabase.auth.updateUser({
           password: password,
@@ -144,34 +166,30 @@ const AcceptInvitePage = () => {
         setTimeout(() => {
           navigate('/');
         }, 2000);
-      } else {
-        // User not authenticated yet
-        // Try to extract token from URL and verify
-        const hash = window.location.hash;
-        const search = window.location.search;
-        
-        // Parse token_hash from URL
-        const tokenHashMatch = hash.match(/token_hash=([^&]+)/) || search.match(/token_hash=([^&]+)/);
-        const typeMatch = hash.match(/type=([^&]+)/) || search.match(/type=([^&]+)/);
-        
-        if (tokenHashMatch && typeMatch?.[1] === 'invite') {
-          const tokenHash = decodeURIComponent(tokenHashMatch[1]);
-          
-          // Verify the invite token
-          const { data, error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'invite',
-          });
+        return;
+      }
 
-          if (verifyError || !data.session) {
-            throw new Error(
-              verifyError?.message ||
-              'El token de invitación no es válido o ha expirado. ' +
-              'Por favor, solicita una nueva invitación o contacta al administrador.'
-            );
-          }
-
-          // After verifying, update password
+      // User not authenticated yet - try to verify token from URL
+      const hash = window.location.hash;
+      const search = window.location.search;
+      
+      console.log('[AcceptInvite] No session found, trying to verify token from URL');
+      
+      // Try multiple token formats that Supabase might use
+      const accessTokenMatch = hash.match(/access_token=([^&]+)/);
+      const tokenHashMatch = hash.match(/token_hash=([^&]+)/) || search.match(/token_hash=([^&]+)/);
+      const typeMatch = hash.match(/type=([^&]+)/) || search.match(/type=([^&]+)/);
+      
+      // If we have an access_token in hash, Supabase should have auto-authenticated
+      // But if not, try to use it to sign in
+      if (accessTokenMatch) {
+        console.log('[AcceptInvite] Access token found, Supabase should handle this automatically');
+        // Wait a bit for Supabase to process the token
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const { data: { session: newSession } } = await supabase.auth.getSession();
+        if (newSession?.user) {
+          // Now authenticated, update password
           const { error: updateError } = await supabase.auth.updateUser({
             password: password,
           });
@@ -181,17 +199,68 @@ const AcceptInvitePage = () => {
           }
 
           setSuccess(true);
-          
           setTimeout(() => {
             navigate('/');
           }, 2000);
-        } else {
-          throw new Error(
-            'Token de invitación no encontrado en la URL. ' +
-            'Por favor, usa el link completo del email de invitación.'
-          );
+          return;
         }
       }
+      
+      // Try token_hash verification
+      if (tokenHashMatch) {
+        const tokenHash = decodeURIComponent(tokenHashMatch[1]);
+        const inviteType = typeMatch?.[1] || 'invite';
+        
+        console.log('[AcceptInvite] Verifying token_hash with type:', inviteType);
+        
+        // Verify the invite token
+        const { data, error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: inviteType as any,
+        });
+
+        if (verifyError) {
+          console.error('[AcceptInvite] Token verification error:', verifyError);
+          throw new Error(
+            verifyError.message ||
+            'El token de invitación no es válido o ha expirado. ' +
+            'Por favor, solicita una nueva invitación o contacta al administrador.'
+          );
+        }
+
+        if (!data.session) {
+          throw new Error(
+            'No se pudo crear la sesión después de verificar el token. ' +
+            'Por favor, solicita una nueva invitación.'
+          );
+        }
+
+        console.log('[AcceptInvite] Token verified, session created');
+
+        // After verifying, update password
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: password,
+        });
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        setSuccess(true);
+        
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+        return;
+      }
+      
+      // No token found at all
+      console.error('[AcceptInvite] No token found in URL');
+      throw new Error(
+        'Token de invitación no encontrado en la URL. ' +
+        'Por favor, usa el link completo del email de invitación. ' +
+        'Si el problema persiste, solicita una nueva invitación.'
+      );
     } catch (err: any) {
       console.error('Error accepting invite:', err);
       setError(
@@ -251,11 +320,11 @@ const AcceptInvitePage = () => {
             )}
 
             {!token && (
-              <Alert variant="destructive">
+              <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  No se encontró un token de invitación válido en la URL.
-                  Por favor, usa el link completo del email de invitación.
+                  <strong>Nota:</strong> Si no ves un token en la URL, Supabase puede haber autenticado automáticamente. 
+                  Intenta establecer tu contraseña. Si aparece un error, asegúrate de usar el link completo del email de invitación.
                 </AlertDescription>
               </Alert>
             )}
@@ -297,7 +366,7 @@ const AcceptInvitePage = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading || !token}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
