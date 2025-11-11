@@ -124,10 +124,6 @@ const AppSidebar = () => {
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden bg-background">
                   <NogalLogo className="h-full w-auto object-contain" />
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Nogal</span>
-                  <span className="truncate text-xs text-muted-foreground">InsightCall Portal</span>
-                </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -155,10 +151,8 @@ const AppSidebar = () => {
           </SidebarMenu>
         </SidebarGroup>
 
-        <SidebarSeparator />
-
         {/* Support Section */}
-        <SidebarGroup>
+        <SidebarGroup className="mt-2">
           <SidebarGroupLabel>{navigationData.supportSection.title}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

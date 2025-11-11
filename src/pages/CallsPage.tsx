@@ -467,22 +467,15 @@ export default function CallsPage() {
       <div className="pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Phone className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-semibold">Llamadas</h1>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{total.toLocaleString()} llamadas totales</span>
-                  {lastUpdated && (
-                    <>
-                      <Separator orientation="vertical" className="h-4" />
-                      <span>Actualizado {format(lastUpdated, 'HH:mm', { locale: es })}</span>
-                    </>
-                  )}
-                </div>
-              </div>
+            <h1 className="text-3xl font-semibold tracking-tight">Llamadas</h1>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <span>{total.toLocaleString()} llamadas totales</span>
+              {lastUpdated && (
+                <>
+                  <Separator orientation="vertical" className="h-4" />
+                  <span>Actualizado {format(lastUpdated, 'HH:mm', { locale: es })}</span>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">

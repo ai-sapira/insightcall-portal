@@ -18,11 +18,13 @@ import {
   BarChart3,
   UserCheck
 } from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import RealCallsList from "@/components/calls/RealCallsList";
 import { Link } from "react-router-dom";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { subDays, format } from "date-fns";
+import { es } from "date-fns/locale";
 
 const HomePage = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('month');
@@ -107,12 +109,52 @@ const HomePage = () => {
   ] : [];
 
   // Datos para el gráfico de área (últimos días)
-  const chartData = stats?.dailyVolume.map(day => ({
-    name: new Date(day.date).toLocaleDateString('es-ES', { weekday: 'short' }),
-    calls: day.calls,
-    successful: day.successful,
-    failed: day.failed
-  })) || [];
+  // Asegurar que todos los días del período estén representados
+  const chartData = useMemo(() => {
+    const daysInPeriod = selectedPeriod === 'today' ? 1 : selectedPeriod === 'week' ? 7 : 30;
+    const now = new Date();
+    const isLongPeriod = daysInPeriod > 7;
+    
+    // Crear mapa con todos los días del período inicializados en 0
+    const daysMap = new Map<string, { name: string; calls: number; successful: number; failed: number }>();
+    
+    for (let i = daysInPeriod - 1; i >= 0; i--) {
+      const date = subDays(now, i);
+      const dayKey = date.toISOString().split('T')[0];
+      const dayName = isLongPeriod
+        ? format(date, 'dd/MM', { locale: es }) // Para períodos largos, mostrar fecha completa
+        : format(date, 'EEE', { locale: es }); // Para períodos cortos, mostrar día de la semana
+      
+      daysMap.set(dayKey, {
+        name: dayName,
+        calls: 0,
+        successful: 0,
+        failed: 0
+      });
+    }
+    
+    // Llenar con datos reales si existen
+    if (stats?.dailyVolume && stats.dailyVolume.length > 0) {
+      stats.dailyVolume.forEach(day => {
+        const dateKey = day.date;
+        if (daysMap.has(dateKey)) {
+          const dayName = isLongPeriod
+            ? format(new Date(day.date), 'dd/MM', { locale: es })
+            : format(new Date(day.date), 'EEE', { locale: es });
+          
+          daysMap.set(dateKey, {
+            name: dayName,
+            calls: day.calls,
+            successful: day.successful,
+            failed: day.failed
+          });
+        }
+      });
+    }
+    
+    // Convertir a array manteniendo el orden
+    return Array.from(daysMap.values());
+  }, [stats?.dailyVolume, selectedPeriod]);
 
   // Datos para el gráfico circular de estados
   const statusData = stats?.callsByStatus.map((item, index) => ({
@@ -257,11 +299,16 @@ const HomePage = () => {
                           <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                         </linearGradient>
                       </defs>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsla(var(--muted-foreground) / 0.1)" />
                       <XAxis 
                         dataKey="name" 
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                        interval={selectedPeriod === 'month' ? 2 : 0}
+                        angle={selectedPeriod === 'month' ? -45 : 0}
+                        textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
+                        height={selectedPeriod === 'month' ? 60 : 30}
                       />
                       <YAxis 
                         axisLine={false}
