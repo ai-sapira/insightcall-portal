@@ -48,6 +48,22 @@ export const UserManagement = () => {
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  
+  // Validación de email personalizada
+  const validateEmail = (email: string): string | null => {
+    if (!email) {
+      return 'Por favor ingresa un email';
+    }
+    
+    // Expresión regular para validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(email)) {
+      return 'Por favor ingresa un email válido (ejemplo: usuario@dominio.com)';
+    }
+    
+    return null;
+  };
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [backendUnavailable, setBackendUnavailable] = useState(false);
 
@@ -95,8 +111,10 @@ export const UserManagement = () => {
     setInviteError(null);
     setInviteSuccess(false);
 
-    if (!inviteEmail) {
-      setInviteError('Por favor ingresa un email');
+    // Validar email antes de enviar
+    const emailError = validateEmail(inviteEmail);
+    if (emailError) {
+      setInviteError(emailError);
       setInviting(false);
       return;
     }
@@ -203,10 +221,16 @@ export const UserManagement = () => {
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="invite-email"
-                      type="email"
+                      type="text"
                       placeholder="usuario@ejemplo.com"
                       value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
+                      onChange={(e) => {
+                        setInviteEmail(e.target.value);
+                        // Limpiar error cuando el usuario empiece a escribir
+                        if (inviteError) {
+                          setInviteError(null);
+                        }
+                      }}
                       className="pl-10"
                       disabled={inviting}
                       required
