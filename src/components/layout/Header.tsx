@@ -2,9 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -16,8 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  Search, 
-  Settings, 
   LogOut,
   Mail,
   Shield
@@ -52,34 +48,13 @@ const Header: React.FC = () => {
   return (
     <header className="relative z-40 w-full border-b bg-background">
       <div className="flex h-16 items-center gap-4 px-4">
-        {/* Left side - Menu and Search */}
-        <div className="flex items-center gap-2 flex-1">
+        {/* Left side - Menu */}
+        <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
-          <div className="h-4 w-px bg-sidebar-border" />
-          <div className="flex items-center gap-2 flex-1">
-            <div className="relative hidden md:block flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar llamadas, transcripciones..."
-                className="pl-10 bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-border placeholder:text-muted-foreground/60"
-              />
-            </div>
-          </div>
         </div>
 
         {/* Right side - Actions */}
-        <div className="flex items-center gap-2">
-          
-          {/* Settings */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2 h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={() => navigate('/settings')}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-
+        <div className="flex items-center gap-2 ml-auto">
           {/* User profile dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -117,11 +92,6 @@ const Header: React.FC = () => {
                   )}
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Configuración</span>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={handleLogout}

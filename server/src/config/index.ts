@@ -1,7 +1,13 @@
 import dotenv from 'dotenv';
+import path from 'path';
 
 // Load environment variables from .env file
-dotenv.config();
+// Try to load from project root first, then from server directory
+const envPath = path.resolve(__dirname, '../../../.env');
+const serverEnvPath = path.resolve(__dirname, '../../.env');
+
+dotenv.config({ path: envPath });
+dotenv.config({ path: serverEnvPath, override: false }); // Don't override if root .env exists
 
 interface Config {
   port: number;
@@ -23,7 +29,8 @@ interface Config {
   nogalApiTimeout: number;
   nogalApiKey?: string;
   
-  // ElevenLabs Agent Filter
+  // ElevenLabs Configuration
+  elevenlabsApiKey?: string; // API Key de ElevenLabs para gestionar el agente
   elevenlabsAgentId?: string; // Agent ID de ElevenLabs para filtrar llamadas de Nogal
 }
 
@@ -67,7 +74,8 @@ const config: Config = {
   nogalApiTimeout: parseInt(getOptionalEnvVar('NOGAL_API_TIMEOUT', '30000')),
   nogalApiKey: getOptionalEnvVar('NOGAL_API_KEY'),
   
-  // ElevenLabs Agent Filter
+  // ElevenLabs Configuration
+  elevenlabsApiKey: getOptionalEnvVar('ELEVENLABS_API_KEY'),
   elevenlabsAgentId: getOptionalEnvVar('ELEVENLABS_AGENT_ID'),
 };
 

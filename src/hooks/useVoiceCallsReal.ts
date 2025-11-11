@@ -13,7 +13,7 @@ interface UseVoiceCallsRealReturn {
 // TIPOS PARA FILTROS
 type FilterOptions = {
   status?: 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
-  period?: 'all' | 'today' | 'week' | 'month';
+  period?: 'all' | 'today' | 'week' | 'month' | '3months' | '6months';
   search?: string; // Búsqueda unificada: ID, conversación, agente, Caller ID
 };
 
@@ -140,10 +140,10 @@ export function useVoiceCallsPaginated(
 
       console.log(`🔄 [PAGINATION] Actualizando página ${page}...`, appliedFilters);
       
-      // Obtener datos paginados y estadísticas en paralelo
+      // Obtener datos paginados y estadísticas en paralelo (con los mismos filtros)
       const [paginatedData, statsData] = await Promise.all([
         voiceCallsRealDataService.getVoiceCallsPaginated(page, limit, appliedFilters),
-        voiceCallsRealDataService.getVoiceCallsStats()
+        voiceCallsRealDataService.getVoiceCallsStats(appliedFilters)
       ]);
 
       setCalls(paginatedData.calls);

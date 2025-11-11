@@ -3,28 +3,22 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   ArrowUpRight, 
   Calendar, 
   Phone, 
   Clock, 
-  CheckCircle, 
   AlertCircle, 
-  Activity, 
+  RefreshCw, 
   TrendingUp, 
   TrendingDown,
   MessageSquare, 
   BarChart3,
-  Target,
-  RefreshCw,
-  Euro
+  UserCheck
 } from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar, BarChart, PieChart, Pie, Cell } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import RealCallsList from "@/components/calls/RealCallsList";
 import { Link } from "react-router-dom";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -57,6 +51,13 @@ const HomePage = () => {
     }
   };
 
+  // Calcular media de llamadas por día según el período
+  const calculateAverageCallsPerDay = (): number => {
+    if (!stats || stats.totalCalls === 0) return 0;
+    const daysInPeriod = selectedPeriod === 'today' ? 1 : selectedPeriod === 'week' ? 7 : 30;
+    return Math.round((stats.totalCalls / daysInPeriod) * 10) / 10;
+  };
+
   // Configurar métricas principales con datos reales
   const keyMetrics = stats ? [
     {
@@ -82,13 +83,13 @@ const HomePage = () => {
       bgColor: "bg-green-50"
     },
     {
-      title: "Tasa de éxito",
-      value: `${stats.successRate}%`,
-      subtitle: "Llamadas exitosas",
-      icon: CheckCircle,
-      trend: formatTrend(stats.trends.success),
-      trendValue: `${Math.abs(stats.trends.success)}% vs período anterior`,
-      positive: stats.trends.success >= 0,
+      title: "Media llamadas por día",
+      value: calculateAverageCallsPerDay().toLocaleString(),
+      subtitle: getPeriodText(selectedPeriod),
+      icon: Calendar,
+      trend: formatTrend(stats.trends.calls),
+      trendValue: `${Math.abs(stats.trends.calls)}% vs período anterior`,
+      positive: stats.trends.calls >= 0,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50"
     },
@@ -123,44 +124,6 @@ const HomePage = () => {
     color: `hsl(var(--chart-${index + 1}))`
   })) || [];
 
-  // Métricas de rendimiento
-  const performanceData = stats ? [
-    { metric: "Tasa de éxito", value: stats.successRate, target: 90 },
-    { metric: "Análisis completados", value: stats.analysisRate, target: 95 },
-    { metric: "Audio disponible", value: stats.audioAvailability, target: 85 },
-    { metric: "Uptime del sistema", value: stats.systemStatus.uptime, target: 99 },
-  ] : [];
-
-  // Actividad reciente simulada (esto podría venir de un log real)
-  const recentActivity = [
-    {
-      id: 1,
-      type: "call",
-      title: "Nueva llamada procesada",
-      description: `Última llamada: ${stats?.systemStatus.lastCallTime ? 
-        new Date(stats.systemStatus.lastCallTime).toLocaleString('es-ES') : 'No disponible'}`,
-      time: stats?.systemStatus.lastCallTime ? 
-        `hace ${Math.round((new Date().getTime() - new Date(stats.systemStatus.lastCallTime).getTime()) / (1000 * 60))} min` : 
-        'No disponible',
-      status: "success"
-    },
-    {
-      id: 2,
-      type: "ticket",
-      title: "Tickets generados",
-      description: `${stats?.ticketsCreated || 0} tickets creados en el período`,
-      time: "actualizado ahora",
-      status: "info"
-    },
-    {
-      id: 3,
-      type: "system",
-      title: "Estado del sistema",
-      description: stats?.systemStatus.isActive ? "Sistema activo y procesando" : "Sistema inactivo",
-      time: lastUpdated ? `actualizado ${lastUpdated.toLocaleTimeString('es-ES')}` : '',
-      status: stats?.systemStatus.isActive ? "success" : "warning"
-    }
-  ];
 
   if (error) {
     return (
@@ -211,14 +174,6 @@ const HomePage = () => {
                 </Button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={refresh} disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Actualizar
-            </Button>
-            <Button size="sm">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
           </div>
         </div>
       </div>
@@ -278,16 +233,8 @@ const HomePage = () => {
         )}
       </div>
 
-      {/* Contenido principal con tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="analytics">Analíticas</TabsTrigger>
-          <TabsTrigger value="performance">Rendimiento</TabsTrigger>
-          <TabsTrigger value="activity">Actividad</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
+      {/* Contenido principal */}
+      <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
             
             {/* Gráfico principal */}
@@ -343,17 +290,15 @@ const HomePage = () => {
               </CardContent>
             </Card>
 
-            {/* Panel lateral con estado del sistema */}
+            {/* Panel lateral con información de llamadas */}
             <Card className="col-span-3">
               <CardHeader>
-                <CardTitle>Estado del sistema</CardTitle>
+                <CardTitle>Información de llamadas</CardTitle>
                 <CardDescription>
-                  Monitoreo en tiempo real
+                  Detalles del período seleccionado
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                
-                {/* Estado general */}
                 {isLoading ? (
                   <div className="space-y-4">
                     <Skeleton className="h-12 w-full" />
@@ -362,232 +307,54 @@ const HomePage = () => {
                 ) : (
                   <>
                     <div className="flex items-center space-x-4">
-                      <div className={`p-2 rounded-full ${stats?.systemStatus.isActive ? 'bg-green-100' : 'bg-red-100'}`}>
-                        <Activity className={`h-5 w-5 ${stats?.systemStatus.isActive ? 'text-green-600' : 'text-red-600'}`} />
+                      <div className="p-2 rounded-full bg-blue-100">
+                        <Phone className="h-5 w-5 text-blue-600" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {stats?.systemStatus.isActive ? 'Sistema activo' : 'Sistema inactivo'}
+                        <p className="text-2xl font-bold leading-none">
+                          {stats?.totalCalls || 0}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {stats?.systemStatus.isActive ? 'Procesando llamadas' : 'Sin actividad reciente'}
+                          llamadas en {getPeriodText(selectedPeriod).toLowerCase()}
                         </p>
                       </div>
                     </div>
 
                     <Separator />
 
-                    {/* Información del sistema */}
+                    {/* Información adicional */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Uptime</span>
-                        <Badge variant="secondary" className="text-green-700 bg-green-50">
-                          {stats?.systemStatus.uptime}%
+                        <span className="text-sm text-muted-foreground">Análisis completados</span>
+                        <Badge variant="secondary" className="text-blue-700 bg-blue-50">
+                          {stats?.analysisRate || 0}%
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Última llamada</span>
+                        <span className="text-sm text-muted-foreground">Audio disponible</span>
+                        <Badge variant="secondary" className="text-green-700 bg-green-50">
+                          {stats?.audioAvailability || 0}%
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Tickets creados</span>
                         <span className="text-sm font-medium">
-                          {stats?.systemStatus.lastCallTime ? 
-                            new Date(stats.systemStatus.lastCallTime).toLocaleString('es-ES', { 
-                              hour: '2-digit', 
-                              minute: '2-digit',
-                              day: '2-digit',
-                              month: '2-digit'
-                            }) : 
-                            'No disponible'
-                          }
+                          {stats?.ticketsCreated || 0}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Total llamadas</span>
-                        <span className="text-sm font-medium">{stats?.totalCalls || 0}</span>
+                        <span className="text-sm text-muted-foreground">Duración promedio</span>
+                        <span className="text-sm font-medium">
+                          {formatDuration(stats?.avgDuration || 0)}
+                        </span>
                       </div>
-                      {stats?.totalCost && stats.totalCost > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Costo total</span>
-                          <span className="text-sm font-medium flex items-center">
-                            <Euro className="h-3 w-3 mr-1" />
-                            {stats.totalCost.toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            
-            {/* Gráfico de barras */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Llamadas exitosas vs fallidas</CardTitle>
-                <CardDescription>
-                  Distribución por día en {getPeriodText(selectedPeriod).toLowerCase()}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <Skeleton className="h-[300px] w-full" />
-                ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={chartData}>
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="successful" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="failed" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Gráfico circular */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Distribución por estado</CardTitle>
-                <CardDescription>
-                  Estado de todas las llamadas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <Skeleton className="h-[300px] w-full" />
-                ) : (
-                  <>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie
-                          data={statusData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {statusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="mt-4 space-y-2">
-                      {statusData.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: item.color }}
-                            />
-                            <span className="text-sm text-muted-foreground">{item.name}</span>
-                          </div>
-                          <span className="text-sm font-medium">{item.value} ({item.percentage}%)</span>
-                        </div>
-                      ))}
                     </div>
                   </>
                 )}
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="performance" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Métricas de rendimiento</CardTitle>
-              <CardDescription>
-                Análisis de la calidad y eficiencia del sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {isLoading ? (
-                Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="space-y-3">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-2 w-full" />
-                  </div>
-                ))
-              ) : (
-                performanceData.map((metric, index) => (
-                  <div key={index} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {metric.metric}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Objetivo: {metric.target}%
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold">{metric.value}%</p>
-                        <Badge 
-                          variant={metric.value >= metric.target ? "default" : "secondary"}
-                          className={metric.value >= metric.target ? "bg-green-100 text-green-700" : ""}
-                        >
-                          {metric.value >= metric.target ? "✓ Objetivo alcanzado" : "⚠ Por debajo del objetivo"}
-                        </Badge>
-                      </div>
-                    </div>
-                    <Progress value={metric.value} className="h-3" />
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Actividad del sistema</CardTitle>
-              <CardDescription>
-                Estado actual y última actividad registrada
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <div key={activity.id} className="flex items-start space-x-4">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className={
-                        activity.status === 'success' ? 'bg-green-100 text-green-600' :
-                        activity.status === 'warning' ? 'bg-yellow-100 text-yellow-600' :
-                        'bg-blue-100 text-blue-600'
-                      }>
-                        {activity.type === 'call' ? <Phone className="h-4 w-4" /> :
-                         activity.type === 'ticket' ? <MessageSquare className="h-4 w-4" /> :
-                         <Activity className="h-4 w-4" />}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-1 flex-1">
-                      <p className="text-sm font-medium leading-none">
-                        {activity.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {activity.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {activity.time}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      </div>
 
       {/* Acciones rápidas */}
       <Card className="mt-8">
@@ -598,7 +365,7 @@ const HomePage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <Button variant="outline" className="h-24 flex-col space-y-2" asChild>
               <Link to="/calls">
                 <Phone className="h-6 w-6" />
@@ -612,15 +379,9 @@ const HomePage = () => {
               </Link>
             </Button>
             <Button variant="outline" className="h-24 flex-col space-y-2" asChild>
-              <Link to="/tickets">
-                <MessageSquare className="h-6 w-6" />
-                <span>Tickets</span>
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-24 flex-col space-y-2" asChild>
-              <Link to="/settings">
-                <Target className="h-6 w-6" />
-                <span>Configuración</span>
+              <Link to="/users">
+                <UserCheck className="h-6 w-6" />
+                <span>Usuarios</span>
               </Link>
             </Button>
           </div>

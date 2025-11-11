@@ -1,10 +1,26 @@
 // src/lib/elevenlabs-api.ts
 
-// Accede a las variables de entorno usando import.meta.env para Vite
-const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY; 
-// Asegúrate de renombrar NEXT_PUBLIC_ELEVENLABS_AGENT_ID a VITE_ELEVENLABS_AGENT_ID en tu .env
-const ELEVENLABS_AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID; 
-const API_BASE_URL = "https://api.elevenlabs.io/v1/convai/agents";
+/**
+ * Get API base URL
+ * In development: uses VITE_API_URL or defaults to localhost:3000
+ * In production: uses VITE_API_URL or same origin
+ */
+const getApiBaseUrl = (): string => {
+  // If explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // In development, default to localhost:3000
+  if (import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3000';
+  }
+  
+  // In production, use the Render backend URL as default if VITE_API_URL is not set
+  return 'https://insightcall-portal.onrender.com';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 interface AgentConfigPayload {
   conversation_config?: {
@@ -59,48 +75,59 @@ interface AgentDetails {
 
 
 export const getAgentConfig = async (): Promise<AgentDetails> => {
-  if (!ELEVENLABS_API_KEY || !ELEVENLABS_AGENT_ID) {
-    // Updated error message slightly for clarity
-    throw new Error("ElevenLabs API Key or Agent ID is missing in environment variables (VITE_ELEVENLABS_API_KEY, VITE_ELEVENLABS_AGENT_ID).");
-  }
+  const url = `${API_BASE_URL}/api/v1/agent/config`;
+  
+  console.log('[ElevenLabs API] Fetching agent config from:', url);
 
-  const response = await fetch(`${API_BASE_URL}/${ELEVENLABS_AGENT_ID}`, {
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'xi-api-key': ELEVENLABS_API_KEY,
+      'Content-Type': 'application/json',
     },
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    console.error("Error fetching agent config:", errorData);
-    throw new Error(`Failed to fetch agent config: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    console.error("[ElevenLabs API] Error fetching agent config:", errorData);
+    throw new Error(errorData.message || `Failed to fetch agent config: ${response.statusText}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  
+  // Backend returns { success: true, data: AgentDetails }
+  if (result.success && result.data) {
+    return result.data;
+  }
+  
+  throw new Error('Invalid response format from backend');
 };
 
 export const updateAgentConfig = async (payload: AgentConfigPayload): Promise<void> => {
-  if (!ELEVENLABS_API_KEY || !ELEVENLABS_AGENT_ID) {
-     // Updated error message slightly for clarity
-    throw new Error("ElevenLabs API Key or Agent ID is missing in environment variables (VITE_ELEVENLABS_API_KEY, VITE_ELEVENLABS_AGENT_ID).");
-  }
+  const url = `${API_BASE_URL}/api/v1/agent/config`;
+  
+  console.log('[ElevenLabs API] Updating agent config at:', url);
+  console.log('[ElevenLabs API] Payload:', payload);
 
-  const response = await fetch(`${API_BASE_URL}/${ELEVENLABS_AGENT_ID}`, {
+  const response = await fetch(url, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'xi-api-key': ELEVENLABS_API_KEY,
     },
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-     const errorData = await response.json();
-     console.error("Error updating agent config:", errorData);
-     throw new Error(`Failed to update agent config: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    console.error("[ElevenLabs API] Error updating agent config:", errorData);
+    throw new Error(errorData.message || `Failed to update agent config: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  
+  // Backend returns { success: true, message: string }
+  if (!result.success) {
+    throw new Error(result.message || 'Failed to update agent config');
   }
   
-  // The API returns 200 OK with an empty body on successful update
-  // console.log("Agent config updated successfully."); 
+  console.log("[ElevenLabs API] Agent config updated successfully");
 }; 

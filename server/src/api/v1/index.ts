@@ -6,6 +6,7 @@ import testAnalysisRoutes from './test-analysis.routes';
 import translationRoutes from './translation.routes';
 import crearTicketRoutes from './crear-ticket.routes';
 import usersRoutes from './users';
+import agentRoutes from './agent';
 
 const router = Router();
 
@@ -29,6 +30,9 @@ router.use('/nogal', nogalRoutes);
 // Users management routes
 router.use('/users', usersRoutes);
 
+// Agent configuration routes
+router.use('/agent', agentRoutes);
+
 // Health check for the entire API
 router.get('/health', (req, res) => {
   res.json({
@@ -41,7 +45,8 @@ router.get('/health', (req, res) => {
       ticketCreation: 'available',
       nogal: 'available',
       newCalls: 'available',
-      users: 'available'
+      users: 'available',
+      agent: 'available'
     }
   });
 });

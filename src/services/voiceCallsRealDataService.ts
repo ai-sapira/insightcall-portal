@@ -44,6 +44,9 @@ export interface VoiceCallsStats {
   total: number;
   totalDuration: number;
   avgDuration: number;
+  totalMessages: number;
+  avgMessages: number;
+  ticketsSent: number;
 }
 
 // Estructura de transcripción individual de Segurneo desde BD
@@ -240,7 +243,11 @@ class VoiceCallsRealDataService {
           // 🎵 CAMPOS DE AUDIO AÑADIDOS
           audio_download_url: call.audio_download_url || null,
           audio_file_size: call.audio_file_size || null,
-          fichero_llamada: call.fichero_llamada || call.audio_download_url || null
+          fichero_llamada: call.fichero_llamada || call.audio_download_url || null,
+          // 🤖 CAMPOS DEL SISTEMA IA
+          analysis_completed: call.analysis_completed || false,
+          ai_analysis: call.ai_analysis || null,
+          tickets_created: call.tickets_created || 0
         };
       });
 
@@ -259,19 +266,69 @@ class VoiceCallsRealDataService {
     }
   }
 
-  async getVoiceCallsStats(): Promise<VoiceCallsStats> {
+  async getVoiceCallsStats(filters?: {
+    status?: 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
+    period?: 'all' | 'today' | 'week' | 'month' | '3months' | '6months';
+    search?: string;
+  }): Promise<VoiceCallsStats> {
     try {
-      console.log('📊 Calculando estadísticas de calls...');
+      console.log('📊 Calculando estadísticas de calls con filtros...', filters);
       
       // 🔒 FILTRO: Solo contar llamadas del agente de Nogal
       const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
       
       let query = supabase
         .from('calls')
-        .select('duration_seconds')
+        .select(`
+          duration_seconds,
+          total_messages,
+          call_successful,
+          tickets_info:tickets(
+            id,
+            status,
+            metadata
+          )
+        `)
         .eq('agent_id', NOGAL_AGENT_ID);
       
       console.log(`🔒 [FILTER] Filtrando estadísticas por agent_id: ${NOGAL_AGENT_ID}`);
+
+      // Aplicar filtros de búsqueda unificada
+      if (filters?.search) {
+        const searchTerm = `%${filters.search}%`;
+        query = query.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm},caller_id.ilike.${searchTerm}`);
+      }
+
+      // Aplicar filtros de período
+      if (filters?.period && filters.period !== 'all') {
+        const now = new Date();
+        let startDate: Date;
+        
+        switch (filters.period) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case '3months':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+            break;
+          case '6months':
+            startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            startDate = new Date(0);
+        }
+        
+        if (startDate.getTime() > 0) {
+          const startDateISO = startDate.toISOString();
+          query = query.gte('start_time', startDateISO);
+        }
+      }
 
       const { data, error } = await query;
 
@@ -283,14 +340,28 @@ class VoiceCallsRealDataService {
       const total = data?.length || 0;
       const totalDuration = data?.reduce((sum, call) => sum + (call.duration_seconds || 0), 0) || 0;
       const avgDuration = total > 0 ? Math.round(totalDuration / total) : 0;
+      const totalMessages = data?.reduce((sum, call) => sum + (call.total_messages || 0), 0) || 0;
+      const avgMessages = total > 0 ? Math.round((totalMessages / total) * 10) / 10 : 0;
+      
+      // Calcular tickets enviados a Nogal desde el JOIN
+      const ticketsSent = data?.filter((call: any) => {
+        const tickets = call.tickets_info || [];
+        return tickets.some((ticket: any) => 
+          ticket.status === 'completed' && 
+          ticket.metadata?.nogal_status === 'sent_to_nogal'
+        );
+      }).length || 0;
 
       const stats: VoiceCallsStats = {
         total,
         totalDuration,
-        avgDuration
+        avgDuration,
+        totalMessages,
+        avgMessages,
+        ticketsSent
       };
 
-      console.log('✅ Estadísticas calculadas:', stats);
+      console.log('✅ Estadísticas calculadas con filtros:', stats);
       return stats;
       
     } catch (error) {
@@ -624,7 +695,7 @@ class VoiceCallsRealDataService {
   // NUEVO MÉTODO PARA PAGINACIÓN
   async getVoiceCallsPaginated(page: number = 1, limit: number = 10, filters?: {
     status?: 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
-    period?: 'all' | 'today' | 'week' | 'month';
+    period?: 'all' | 'today' | 'week' | 'month' | '3months' | '6months';
     search?: string; // Búsqueda unificada: ID, conversación, agente, Caller ID
   }): Promise<{
     calls: VoiceCallReal[];
@@ -685,6 +756,12 @@ class VoiceCallsRealDataService {
             break;
           case 'month':
             startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case '3months':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+            break;
+          case '6months':
+            startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
             break;
           default:
             startDate = new Date(0); // No filter

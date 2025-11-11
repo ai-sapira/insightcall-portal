@@ -23,15 +23,12 @@ import { Badge } from "@/components/ui/badge";
 import NogalLogo from '../branding/NogalLogo';
 import { 
   BarChart3,
-  CreditCard, 
   FlaskConical,
-  FolderClosed,
   Home, 
   Lock,
   PhoneCall, 
   Settings,
   ShoppingCart,
-  Ticket,
   User,
   Workflow,
 } from "lucide-react";
@@ -64,16 +61,6 @@ const navigationData = {
         icon: BarChart3,
       },
       {
-        title: "Acciones",
-        url: "/actions",
-        icon: FolderClosed,
-      },
-      {
-        title: "Tickets",
-        url: "/tickets",
-        icon: Ticket,
-      },
-      {
         title: "Lab",
         url: "/lab",
         icon: FlaskConical,
@@ -103,11 +90,6 @@ const navigationData = {
       title: "Configuración",
       url: "/settings",
       icon: Settings,
-    },
-    {
-      title: "Facturación",
-      url: "/invoicing",
-      icon: CreditCard,
     },
   ],
 };

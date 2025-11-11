@@ -66,6 +66,9 @@ export interface ExportFilters {
   includeAudio?: boolean;
   // 🎯 NUEVO: Exportación específica
   specificCallIds?: string[]; // IDs de conversaciones específicas
+  // 📅 NUEVO: Intervalo de tiempo personalizado
+  startDate?: string; // ISO date string
+  endDate?: string; // ISO date string
 }
 
 export class ExportService {
@@ -83,6 +86,10 @@ export class ExportService {
       if (filters.specificCallIds && filters.specificCallIds.length > 0) {
         console.log(`🎯 [EXPORT] Exportando ${filters.specificCallIds.length} llamadas específicas`);
         calls = await this.getSpecificCalls(filters.specificCallIds);
+      } else if (filters.startDate || filters.endDate) {
+        // 📅 NUEVO: Si se especifica intervalo de tiempo personalizado
+        console.log(`📅 [EXPORT] Exportando por intervalo: ${filters.startDate} a ${filters.endDate}`);
+        calls = await this.getCallsByDateRange(filters.startDate!, filters.endDate!, filters.search);
       } else {
         // 1. Obtener todas las llamadas con filtros normales
         const result = await voiceCallsRealDataService.getVoiceCallsPaginated(
@@ -260,7 +267,6 @@ export class ExportService {
         'Duración (seg)': row.duracion_segundos,
         'Estado Llamada': row.estado_llamada,
         'Razón Finalización': row.razon_finalizacion,
-        'Agente ID': row.agente_id,
         'Mensajes Agente': row.mensajes_agente,
         'Mensajes Usuario': row.mensajes_usuario,
         'Total Mensajes': row.total_mensajes,
@@ -270,9 +276,6 @@ export class ExportService {
         'Ticket IDs': row.ticket_ids,
         'Tipo Ticket': row.ticket_tipo,
         'Motivo Ticket': row.ticket_motivo,
-        'Prioridad': row.ticket_prioridad,
-        'Estado Ticket': row.ticket_estado,
-        'Enviado a Nogal': row.ticket_enviado_nogal,
         'Nogal Ticket ID': row.nogal_ticket_id,
         'Estado Nogal': row.nogal_estado,
         'Nombre Cliente': row.nombre_cliente,
@@ -280,12 +283,6 @@ export class ExportService {
         'Teléfono Cliente': row.telefono_cliente,
         'Código Cliente': row.codigo_cliente,
         'Dirección Cliente': row.direccion_cliente,
-        'Tipo Incidencia (IA)': row.tipo_incidencia_ia,
-        'Motivo Gestión (IA)': row.motivo_gestion_ia,
-        'Confianza IA': row.confianza_ia,
-        'Requiere Ticket': row.requiere_ticket,
-        'Costo (centavos)': row.costo_centavos,
-        'Costo (euros)': row.costo_euros,
         'Audio Disponible': row.audio_disponible,
         'URL Audio': row.audio_url,
         'Tamaño Audio': row.audio_tamaño_mb,
@@ -647,6 +644,118 @@ export class ExportService {
     } catch (error) {
       console.error('❌ [EXPORT] Error obteniendo llamadas específicas:', error);
       throw new Error(`Error obteniendo llamadas específicas: ${error}`);
+    }
+  }
+
+  /**
+   * 📅 Obtener llamadas por intervalo de tiempo personalizado
+   */
+  private async getCallsByDateRange(startDate: string, endDate: string, search?: string): Promise<VoiceCallReal[]> {
+    try {
+      // 🔒 FILTRO: Solo obtener llamadas del agente de Nogal
+      const NOGAL_AGENT_ID = 'agent_01jym1fbthfhttdrgyqvdx5xtq';
+      
+      let query = supabase
+        .from('calls')
+        .select(`
+          *,
+          tickets_info:tickets(
+            id,
+            status,
+            metadata,
+            tipo_incidencia,
+            motivo_incidencia,
+            priority,
+            description,
+            created_at
+          )
+        `)
+        .eq('agent_id', NOGAL_AGENT_ID)
+        .order('start_time', { ascending: false });
+
+      // Aplicar filtro de fecha de inicio
+      if (startDate) {
+        query = query.gte('start_time', startDate);
+      }
+
+      // Aplicar filtro de fecha de fin
+      if (endDate) {
+        // Agregar 23:59:59 al final del día
+        const endDateWithTime = new Date(endDate);
+        endDateWithTime.setHours(23, 59, 59, 999);
+        query = query.lte('start_time', endDateWithTime.toISOString());
+      }
+
+      // Aplicar búsqueda si existe
+      if (search) {
+        const searchTerm = `%${search}%`;
+        query = query.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm},caller_id.ilike.${searchTerm}`);
+      }
+
+      const { data: callsData, error } = await query;
+
+      if (error) {
+        throw new Error(`Error fetching calls by date range: ${error.message}`);
+      }
+
+      if (!callsData || callsData.length === 0) {
+        console.warn('🔍 [EXPORT] No se encontraron llamadas en el intervalo especificado');
+        return [];
+      }
+
+      // Procesar las llamadas al formato VoiceCallReal
+      const processedCalls: VoiceCallReal[] = callsData.map(call => {
+        const tickets = call.tickets_info || [];
+        const ticketsCount = tickets.length;
+        
+        const ticketSentToNogal = tickets.some((ticket: any) =>
+          ticket.status === 'completed' &&
+          ticket.metadata?.nogal_status === 'sent_to_nogal'
+        );
+
+        const ticketsSent = tickets.filter((ticket: any) => 
+          ticket.metadata?.nogal_ticket_id || 
+          ticket.metadata?.ticket_id ||
+          ticket.status === 'sent'
+        ).length;
+
+        return {
+          id: call.id,
+          segurneo_call_id: call.segurneo_call_id,
+          conversation_id: call.conversation_id,
+          agent_id: call.agent_id,
+          caller_id: (call as any).caller_id || null,
+          start_time: call.start_time,
+          end_time: call.end_time,
+          duration_seconds: call.duration_seconds,
+          status: call.status,
+          call_successful: call.call_successful,
+          agent_messages: call.agent_messages,
+          user_messages: call.user_messages,
+          total_messages: call.total_messages,
+          audio_available: !!call.audio_download_url,
+          termination_reason: call.termination_reason,
+          transcript_summary: call.transcript_summary,
+          created_at: call.created_at,
+          received_at: call.received_at,
+          tickets_count: ticketsCount,
+          tickets_sent: ticketsSent,
+          has_sent_tickets: ticketsSent > 0,
+          ticket_status: ticketsCount > 0 ? (ticketsSent > 0 ? 'sent' : 'pending') : 'none',
+          ticket_sent_to_nogal: ticketSentToNogal,
+          ticket_ids: [],
+          audio_download_url: call.audio_download_url,
+          audio_file_size: call.audio_file_size,
+          fichero_llamada: call.fichero_llamada,
+        };
+      });
+
+      console.log(`✅ [EXPORT] Procesadas ${processedCalls.length} llamadas por intervalo de tiempo`);
+      return processedCalls;
+
+    } catch (error) {
+      console.error('❌ [EXPORT] Error obteniendo llamadas por intervalo:', error);
+      throw new Error(`Error obteniendo llamadas por intervalo: ${error}`);
     }
   }
 

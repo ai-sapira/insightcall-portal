@@ -162,7 +162,7 @@ export const UserManagement = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Gestión de Usuarios</h2>
+          <h2 className="text-2xl font-bold">Gestión de usuarios</h2>
           <p className="text-muted-foreground">
             Administra los usuarios del portal
           </p>

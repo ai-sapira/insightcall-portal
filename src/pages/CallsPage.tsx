@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useVoiceCallsPaginated } from '@/hooks/useVoiceCallsReal';
 import { VoiceCallReal } from '@/services/voiceCallsRealDataService';
@@ -73,7 +73,7 @@ import { CallDetailsSidebar } from '@/components/calls/CallDetailsSidebar';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 // Types para filtros simplificados
-type FilterPeriod = 'all' | 'today' | 'week' | 'month';
+type FilterPeriod = 'all' | 'today' | 'week' | 'month' | '3months' | '6months';
 
 interface FilterState {
   period: FilterPeriod;
@@ -94,6 +94,15 @@ export default function CallsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false); // Sidebar de detalles cerrado por defecto
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  
+  // Estados para exportación
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportType, setExportType] = useState<'filters' | 'dateRange' | 'specific'>('filters');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [selectedCallIds, setSelectedCallIds] = useState<string[]>([]);
+  const [exportCount, setExportCount] = useState<number | null>(null);
+  const [loadingExportCount, setLoadingExportCount] = useState(false);
 
   // Hook de datos - SOLO SE EJECUTA CUANDO CAMBIAN LOS FILTROS
   const { 
@@ -110,18 +119,18 @@ export default function CallsPage() {
     hasNextPage,
     hasPrevPage,
     updateFilters
-  } = useVoiceCallsPaginated(1, 15, false, filters);
+  } = useVoiceCallsPaginated(1, 15, false, filters as any);
 
   // Handler para cambio de filtros - MEMORIZADO
   const handleFiltersChange = useCallback((newFilters: Partial<FilterState>) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
-    updateFilters(updatedFilters);
+    updateFilters(updatedFilters as any);
   }, [filters, updateFilters]);
 
   // Handler para refresh - MEMORIZADO
   const handleRefresh = useCallback(() => {
-    refresh(filters);
+    refresh(filters as any);
     toast({
       title: "Datos actualizados",
       description: "Las llamadas han sido actualizadas correctamente.",
@@ -148,13 +157,15 @@ export default function CallsPage() {
   }, [toast]);
 
   // Handlers de exportación - MEMORIZADOS
-  const handleExportCSV = useCallback(async () => {
+  const handleExportCSV = useCallback(async (exportFilters?: any) => {
     try {
-      await exportService.exportToCSV(filters);
+      const filtersToUse = exportFilters || filters;
+      await exportService.exportToCSV(filtersToUse);
       toast({
         title: "Exportación exitosa",
         description: "El archivo CSV se ha descargado correctamente",
       });
+      setExportDialogOpen(false);
     } catch (error) {
       console.error('Error exporting to CSV:', error);
       toast({
@@ -165,13 +176,15 @@ export default function CallsPage() {
     }
   }, [filters, toast]);
 
-  const handleExportExcel = useCallback(async () => {
+  const handleExportExcel = useCallback(async (exportFilters?: any) => {
     try {
-      await exportService.exportToExcel(filters);
+      const filtersToUse = exportFilters || filters;
+      await exportService.exportToExcel(filtersToUse);
       toast({
         title: "Exportación exitosa",
         description: "El archivo Excel se ha descargado correctamente",
       });
+      setExportDialogOpen(false);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       toast({
@@ -181,6 +194,97 @@ export default function CallsPage() {
       });
     }
   }, [filters, toast]);
+
+  // Calcular conteo de llamadas a exportar
+  useEffect(() => {
+    const calculateExportCount = async () => {
+      if (!exportDialogOpen) {
+        setExportCount(null);
+        return;
+      }
+
+      setLoadingExportCount(true);
+      try {
+        if (exportType === 'filters') {
+          // Usar el total actual de llamadas con los filtros aplicados
+          setExportCount(total);
+        } else if (exportType === 'dateRange') {
+          if (startDate && endDate) {
+            // Para el conteo por intervalo, hacemos una consulta de prueba
+            // usando el servicio de exportación que tiene acceso a getCallsByDateRange
+            try {
+              const startDateISO = new Date(startDate).toISOString();
+              const endDateISO = new Date(endDate);
+              endDateISO.setHours(23, 59, 59, 999);
+              
+              // Usar el método interno del servicio de exportación para obtener datos
+              // y contar cuántas llamadas hay
+              const testData = await exportService.getExportData({
+                startDate: startDateISO,
+                endDate: endDateISO.toISOString(),
+                search: filters.search
+              });
+              setExportCount(testData.length);
+            } catch (error) {
+              console.error('Error contando llamadas por intervalo:', error);
+              setExportCount(null);
+            }
+          } else {
+            setExportCount(null);
+          }
+        } else if (exportType === 'specific') {
+          setExportCount(selectedCallIds.length);
+        }
+      } catch (error) {
+        console.error('Error calculando conteo de exportación:', error);
+        setExportCount(null);
+      } finally {
+        setLoadingExportCount(false);
+      }
+    };
+
+    calculateExportCount();
+  }, [exportDialogOpen, exportType, filters, total, startDate, endDate, selectedCallIds]);
+
+  // Handler para preparar exportación según tipo seleccionado
+  const handlePrepareExport = useCallback((type: 'csv' | 'excel') => {
+    let exportFilters: any = { ...filters };
+
+    if (exportType === 'dateRange') {
+      if (!startDate || !endDate) {
+        toast({
+          title: "Error",
+          description: "Por favor selecciona ambas fechas",
+          variant: "destructive",
+        });
+        return;
+      }
+      exportFilters = {
+        ...filters,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        period: undefined, // Sobrescribir período predefinido
+      };
+    } else if (exportType === 'specific') {
+      if (selectedCallIds.length === 0) {
+        toast({
+          title: "Error",
+          description: "Por favor selecciona al menos una llamada",
+          variant: "destructive",
+        });
+        return;
+      }
+      exportFilters = {
+        specificCallIds: selectedCallIds,
+      };
+    }
+
+    if (type === 'csv') {
+      handleExportCSV(exportFilters);
+    } else {
+      handleExportExcel(exportFilters);
+    }
+  }, [exportType, startDate, endDate, selectedCallIds, filters, handleExportCSV, handleExportExcel, toast]);
 
   // Handlers para exportar llamadas específicas - MEMORIZADOS
   const handleExportSingleCSV = useCallback(async (conversationId: string) => {
@@ -217,28 +321,19 @@ export default function CallsPage() {
     }
   }, [toast]);
 
-  // Métricas calculadas - MEMORIZADAS
+  // Métricas calculadas - MEMORIZADAS (usando estadísticas filtradas, no solo página actual)
   const keyMetrics = useMemo(() => {
     if (!calls || !stats) return [];
 
     const avgDurationFormatted = stats.avgDuration 
       ? `${Math.floor(stats.avgDuration / 60)}m ${Math.floor(stats.avgDuration % 60)}s`
       : '0m 0s';
-    
-    const successRate = calls.length > 0 
-      ? ((calls.filter(c => c.call_successful).length / calls.length) * 100).toFixed(1)
-      : '0';
-    
-    const ticketsGenerated = calls.reduce((sum, call) => sum + (call.tickets_count || 0), 0);
-    const totalMessages = calls.reduce((sum, call) => sum + call.total_messages, 0);
-    const audioAvailable = calls.filter(c => !!c.audio_download_url).length;
-    const audioPercentage = calls.length > 0 ? ((audioAvailable / calls.length) * 100).toFixed(0) : '0';
 
     return [
       {
         title: 'Total Llamadas',
         value: total.toLocaleString(),
-        subtitle: `${calls.length} en esta página`,
+        subtitle: `Con filtros aplicados`,
         icon: Phone,
         color: 'text-blue-600',
         bgColor: 'bg-blue-50'
@@ -252,16 +347,8 @@ export default function CallsPage() {
         bgColor: 'bg-green-50'
       },
       {
-        title: 'Tasa de Éxito',
-        value: `${successRate}%`,
-        subtitle: 'Llamadas exitosas',
-        icon: TrendingUp,
-        color: 'text-emerald-600',
-        bgColor: 'bg-emerald-50'
-      },
-      {
         title: 'Tickets Enviados',
-        value: calls.filter(c => c.ticket_sent_to_nogal).length.toString(),
+        value: stats.ticketsSent.toLocaleString(),
         subtitle: 'Exitosos a Nogal',
         icon: Send,
         color: 'text-purple-600',
@@ -269,15 +356,15 @@ export default function CallsPage() {
       },
       {
         title: 'Mensajes Totales',
-        value: totalMessages.toLocaleString(),
-        subtitle: 'En esta página',
+        value: stats.totalMessages.toLocaleString(),
+        subtitle: 'Con filtros aplicados',
         icon: MessageSquare,
         color: 'text-orange-600',
         bgColor: 'bg-orange-50'
       },
       {
         title: 'Interacción Promedio',
-        value: `${Math.round(calls.reduce((sum, call) => sum + call.total_messages, 0) / calls.length)}`,
+        value: `${Math.round(stats.avgMessages)}`,
         subtitle: 'Mensajes por llamada',
         icon: MessageSquare,
         color: 'text-indigo-600',
@@ -408,31 +495,177 @@ export default function CallsPage() {
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Actualizar
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+              <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Exportar
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Exportar Datos</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Exportar CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}>
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Exportar Excel
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <PieChart className="h-4 w-4 mr-2" />
-                  Ver analíticas
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Exportar Llamadas</DialogTitle>
+                  <DialogDescription>
+                    Selecciona qué llamadas deseas exportar
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  {/* Tipo de exportación */}
+                  <div className="space-y-2">
+                    <Label>Tipo de exportación</Label>
+                    <Select value={exportType} onValueChange={(value: any) => setExportType(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="filters">Llamadas visibles (con filtros aplicados)</SelectItem>
+                        <SelectItem value="dateRange">Por intervalo de tiempo</SelectItem>
+                        <SelectItem value="specific">Llamadas específicas por ID</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Información de filtros actuales */}
+                  {exportType === 'filters' && (
+                    <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Filtros aplicados:</span>
+                        {loadingExportCount ? (
+                          <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : (
+                          <Badge variant="secondary">
+                            {exportCount !== null ? `${exportCount.toLocaleString()} llamadas` : 'Calculando...'}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        {filters.period !== 'all' && (
+                          <div>• Período: {
+                            filters.period === 'today' ? 'Hoy' : 
+                            filters.period === 'week' ? 'Semana' : 
+                            filters.period === 'month' ? 'Mes' :
+                            filters.period === '3months' ? '3 Meses' :
+                            filters.period === '6months' ? '6 Meses' :
+                            filters.period
+                          }</div>
+                        )}
+                        {filters.search && (
+                          <div>• Búsqueda: "{filters.search}"</div>
+                        )}
+                        {filters.period === 'all' && !filters.search && (
+                          <div>• Sin filtros: todas las llamadas</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Intervalo de tiempo */}
+                  {exportType === 'dateRange' && (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>Fecha de inicio</Label>
+                        <Input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fecha de fin</Label>
+                        <Input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                        />
+                      </div>
+                      {startDate && endDate && (
+                        <div className="rounded-lg border bg-muted/50 p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Llamadas en el intervalo:</span>
+                            {loadingExportCount ? (
+                              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                            ) : (
+                              <Badge variant="secondary">
+                                {exportCount !== null ? `${exportCount.toLocaleString()} llamadas` : 'Calculando...'}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Del {format(new Date(startDate), 'dd MMM yyyy', { locale: es })} al {format(new Date(endDate), 'dd MMM yyyy', { locale: es })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Llamadas específicas */}
+                  {exportType === 'specific' && (
+                    <div className="space-y-2">
+                      <Label>IDs de conversación (separados por comas)</Label>
+                      <Input
+                        placeholder="conv_123, conv_456, ..."
+                        value={selectedCallIds.join(', ')}
+                        onChange={(e) => {
+                          const ids = e.target.value.split(',').map(id => id.trim()).filter(id => id);
+                          setSelectedCallIds(ids);
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Ingresa los IDs de conversación separados por comas
+                      </p>
+                      {selectedCallIds.length > 0 && (
+                        <div className="rounded-lg border bg-muted/50 p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Llamadas seleccionadas:</span>
+                            <Badge variant="secondary">
+                              {selectedCallIds.length} {selectedCallIds.length === 1 ? 'llamada' : 'llamadas'}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Resumen de exportación */}
+                  {exportCount !== null && exportCount > 0 && (
+                    <div className="rounded-lg bg-primary/10 border border-primary/20 p-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">
+                            Se exportarán {exportCount.toLocaleString()} {exportCount === 1 ? 'llamada' : 'llamadas'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            El archivo incluirá todas las columnas configuradas
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botones de acción */}
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={() => handlePrepareExport('csv')}
+                      disabled={exportCount === null || exportCount === 0 || loadingExportCount}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Exportar CSV
+                    </Button>
+                    <Button 
+                      onClick={() => handlePrepareExport('excel')}
+                      disabled={exportCount === null || exportCount === 0 || loadingExportCount}
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Exportar Excel
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
@@ -443,7 +676,7 @@ export default function CallsPage() {
           <CardTitle className="text-lg font-medium">Resumen</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {keyMetrics.map((metric, index) => {
               const IconComponent = metric.icon;
               return (
@@ -508,6 +741,8 @@ export default function CallsPage() {
                 <SelectItem value="today">Hoy</SelectItem>
                 <SelectItem value="week">Semana</SelectItem>
                 <SelectItem value="month">Mes</SelectItem>
+                <SelectItem value="3months">3 Meses</SelectItem>
+                <SelectItem value="6months">6 Meses</SelectItem>
               </SelectContent>
             </Select>
 
@@ -586,16 +821,9 @@ export default function CallsPage() {
                         return (
                           <TableRow key={call.id} className="hover:bg-muted/50">
                             <TableCell>
-                              <div className="space-y-1">
-                                <div className="flex items-center space-x-2">
-                                  <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                                    {call.conversation_id}
-                                  </code>
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {call.segurneo_call_id.slice(0, 16)}...
-                                </div>
-                              </div>
+                              <code className="font-mono text-sm bg-muted px-2 py-1 rounded break-all">
+                                {call.conversation_id}
+                              </code>
                             </TableCell>
                             <TableCell>
                               <div className="whitespace-nowrap">
@@ -693,14 +921,9 @@ export default function CallsPage() {
                       <Card key={call.id} className="hover:shadow-md transition-shadow">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                                {call.conversation_id}
-                              </code>
-                              <p className="text-sm text-muted-foreground">
-                                {call.segurneo_call_id.slice(0, 16)}...
-                              </p>
-                            </div>
+                            <code className="font-mono text-sm bg-muted px-2 py-1 rounded break-all">
+                              {call.conversation_id}
+                            </code>
                             <Badge variant={statusConfig.variant} className="flex items-center space-x-1">
                               <StatusIcon className="h-3 w-3" />
                               <span>{statusConfig.label}</span>
