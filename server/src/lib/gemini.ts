@@ -12,20 +12,81 @@ const INITIAL_RETRY_DELAY = 1000; // 1 second
 const MAX_RETRY_DELAY = 30000; // 30 seconds
 const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504]; // Rate limit, server errors
 
-// Alternative models as fallback
-const FALLBACK_MODELS = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+// Alternative models as fallback - using fastest and most reliable models
+// Priority: speed and reliability for production use
+const FALLBACK_MODELS = [
+  'gemini-2.0-flash-exp',  // Fast experimental model
+  'gemini-1.5-flash'       // Very fast and stable fallback
+];
+
+/**
+ * Extract retry delay from error message if available
+ * Gemini API includes retryDelay in the error response for 429 errors
+ */
+function extractRetryDelay(error: any): number | null {
+  const errorMessage = error?.message || '';
+  
+  // Look for "Please retry in X.XXs" pattern
+  const retryMatch = errorMessage.match(/Please retry in ([\d.]+)s/i);
+  if (retryMatch) {
+    const seconds = parseFloat(retryMatch[1]);
+    return Math.ceil(seconds * 1000); // Convert to milliseconds
+  }
+  
+  // Try to parse RetryInfo from JSON if present
+  try {
+    const retryInfoMatch = errorMessage.match(/"retryDelay":"(\d+)s"/);
+    if (retryInfoMatch) {
+      const seconds = parseInt(retryInfoMatch[1], 10);
+      return seconds * 1000;
+    }
+  } catch (e) {
+    // Ignore parsing errors
+  }
+  
+  return null;
+}
+
+/**
+ * Check if error is quota exceeded permanently (no quota available)
+ */
+function isQuotaExceededPermanently(error: any): boolean {
+  const errorMessage = error?.message || '';
+  
+  // Check for "limit: 0" which indicates no quota available
+  if (/limit:\s*0/i.test(errorMessage) && /quota exceeded/i.test(errorMessage)) {
+    return true;
+  }
+  
+  // Check for free tier quota exceeded with limit 0
+  if (/free_tier.*limit:\s*0/i.test(errorMessage)) {
+    return true;
+  }
+  
+  return false;
+}
 
 /**
  * Check if an error is retryable (temporary server error)
  */
-function isRetryableError(error: any): boolean {
+function isRetryableError(error: any): { retryable: boolean; skipModel?: boolean } {
   // Check for HTTP status codes in error message or status property
   const errorMessage = error?.message || '';
   const statusCode = error?.status || error?.statusCode || error?.code;
   
+  // 404 errors are not retryable (model doesn't exist)
+  if (statusCode === 404) {
+    return { retryable: false, skipModel: true };
+  }
+  
+  // Check if quota is permanently exceeded (no quota available)
+  if (isQuotaExceededPermanently(error)) {
+    return { retryable: false, skipModel: true };
+  }
+  
   // Check if status code is retryable
   if (statusCode && RETRYABLE_STATUS_CODES.includes(statusCode)) {
-    return true;
+    return { retryable: true };
   }
   
   // Check error message for common retryable patterns
@@ -45,7 +106,9 @@ function isRetryableError(error: any): boolean {
     /bad gateway/i
   ];
   
-  return retryablePatterns.some(pattern => pattern.test(errorMessage));
+  const isRetryable = retryablePatterns.some(pattern => pattern.test(errorMessage));
+  
+  return { retryable: isRetryable };
 }
 
 /**
@@ -105,6 +168,7 @@ export async function generateTextResponse(
   // Try each model
   for (const modelName of modelsToTry) {
     const currentModel = getModel(modelName);
+    let shouldSkipModel = false;
     
     // Retry logic for current model
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -112,8 +176,14 @@ export async function generateTextResponse(
         const fullPrompt = context ? `${context}\n\n${prompt}` : prompt;
         
         if (attempt > 0) {
-          const delay = calculateRetryDelay(attempt - 1);
-          console.log(`[Gemini] Retry attempt ${attempt}/${maxRetries} for model ${modelName} after ${delay}ms delay`);
+          // Try to extract retry delay from last error, otherwise use exponential backoff
+          const apiRetryDelay = extractRetryDelay(lastError);
+          const delay = apiRetryDelay 
+            ? Math.min(apiRetryDelay, MAX_RETRY_DELAY) // Cap at max delay
+            : calculateRetryDelay(attempt - 1);
+          
+          const delaySource = apiRetryDelay ? 'API-suggested' : 'exponential-backoff';
+          console.log(`[Gemini] Retry attempt ${attempt}/${maxRetries} for model ${modelName} after ${delay}ms delay (${delaySource})`);
           await sleep(delay);
         }
         
@@ -128,19 +198,34 @@ export async function generateTextResponse(
         return text;
       } catch (error: any) {
         lastError = error;
-        const isRetryable = isRetryableError(error);
+        const retryInfo = isRetryableError(error);
         
         console.error(`[Gemini] Error on attempt ${attempt + 1}/${maxRetries + 1} (model: ${modelName}):`, {
-          message: error?.message,
+          message: error?.message?.substring(0, 200) + '...', // Truncate long messages
           status: error?.status || error?.statusCode,
-          isRetryable
+          retryable: retryInfo.retryable,
+          skipModel: retryInfo.skipModel
         });
         
+        // If model should be skipped (404, quota exceeded permanently), skip to next model
+        if (retryInfo.skipModel) {
+          const errorStatus = error?.status || error?.statusCode;
+          const reason = errorStatus === 404 ? 'not found' : 'no quota available';
+          console.log(`[Gemini] Skipping model ${modelName} (${reason})`);
+          shouldSkipModel = true;
+          break;
+        }
+        
         // If not retryable or max retries reached, break and try next model
-        if (!isRetryable || attempt >= maxRetries) {
+        if (!retryInfo.retryable || attempt >= maxRetries) {
           break;
         }
       }
+    }
+    
+    // Skip to next model if current model should be skipped
+    if (shouldSkipModel) {
+      continue;
     }
   }
   
