@@ -709,7 +709,7 @@ AGENT: "Debe contactar con su banco para obtener los datos y volver a llamar"
       "numeroPoliza": "SOLO si es gestión sobre póliza existente",
       "codigoCliente": "SOLO si es cliente existente de tool_results",
       "direccion": "si se menciona",
-      "ramo": "HOGAR|AUTO|VIDA|DECESOS|SALUD si es nueva contratación",
+      "ramo": "HOGAR|AUTO|VIDA|DECESOS|SALUD|VIAJE si es nueva contratación",
       "cuentaBancaria": "IBAN completo si se proporciona para cambio de cuenta"
     },
     "existingClientInfo": {
@@ -728,7 +728,7 @@ AGENT: "Debe contactar con su banco para obtener los datos y volver a llamar"
     "primaryIncident": {
       "type": "Nueva contratación de seguros|Modificación póliza emitida|Llamada gestión comercial|Solicitud duplicado póliza|Llamada asistencia en carretera|Retención cliente|Baja cliente en BBDD|Reclamación cliente regalo",
       "reason": "Contratación Póliza|Póliza anterior suspensión de garantías|Atención al cliente - Modif datos póliza|Cambio nº de cuenta|Cambio fecha de efecto|Cambio forma de pago|Modificación nº asegurados|Cambio dirección postal|Modificación coberturas|Cesión de derechos|Cesión de derechos datos incompletos|Corrección datos erróneos en póliza|Datos incompletos|LLam gestión comerc|Consulta cliente|Reenvío siniestros|Reenvío agentes humanos|Reenvío agentes humanos no quiere IA|Reenvío agentes humanos no tomador|Duplicado Tarjeta|Email|Información recibos declaración renta|Siniestros|Retención cliente|Baja Cliente BBDD|Reclamación atención al cliente",
-      "ramo": "HOGAR|AUTO|VIDA|DECESOS|SALUD|OTROS SOLO para nuevas contrataciones",
+      "ramo": "HOGAR|AUTO|VIDA|DECESOS|SALUD|VIAJE|OTROS SOLO para nuevas contrataciones",
       "description": "descripción clara de qué necesita el cliente",
       "confidence": 0.95,
       "numeroPolizaAfectada": "SOLO si es gestión sobre póliza específica de detalle_polizas"

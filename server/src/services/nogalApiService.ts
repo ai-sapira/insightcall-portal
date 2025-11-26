@@ -226,7 +226,7 @@ export class NogalApiService {
         numero: p.poliza,
         compania: p.compañia,
         estado: p.estado,
-        ramo: this.inferRamoFromPoliza(p) as 'hogar' | 'auto' | 'vida' | 'decesos' | 'Salud' | 'otros',
+        ramo: this.inferRamoFromPoliza(p) as 'hogar' | 'auto' | 'vida' | 'decesos' | 'Salud' | 'viaje' | 'otros',
         fechaEfecto: p.fecha_efecto,
         mesVencimiento: p.mes_vencimiento,
         importePoliza: p.importe_poliza

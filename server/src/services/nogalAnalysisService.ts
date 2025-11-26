@@ -469,7 +469,7 @@ CONVERSACIÓN A ANALIZAR:
   "incidenciaPrincipal": {
     "tipo": "tipo exacto de la lista",
     "motivo": "motivo exacto de la lista", 
-    "ramo": "solo para nueva contratación: HOGAR|AUTO|VIDA|DECESOS|SALUD",
+    "ramo": "solo para nueva contratación: HOGAR|AUTO|VIDA|DECESOS|SALUD|VIAJE",
     "consideraciones": "notas específicas basadas en la conversación",
     "necesidadCliente": "qué necesita el cliente exactamente",
     "tipoCreacion": "Manual / Automática",

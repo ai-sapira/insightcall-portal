@@ -16,7 +16,7 @@ export interface NogalClientData {
     numero: string;
     compania: string;
     estado: string;
-    ramo: 'hogar' | 'auto' | 'vida' | 'decesos' | 'Salud' | 'otros';
+    ramo: 'hogar' | 'auto' | 'vida' | 'decesos' | 'Salud' | 'viaje' | 'otros';
     fechaEfecto?: string;
     mesVencimiento?: string;
     importePoliza?: string;
@@ -89,7 +89,7 @@ export interface NogalGeminiAnalysisResult {
   // Clasificación principal usando tipos reales de Nogal
   tipoIncidencia: NogalTipoIncidencia;
   motivoGestion: NogalMotivoGestion;
-  ramo?: 'hogar' | 'auto' | 'vida' | 'decesos' | 'Salud' | 'otros';
+  ramo?: 'hogar' | 'auto' | 'vida' | 'decesos' | 'Salud' | 'viaje' | 'otros';
   
   // Confianza y prioridad
   confidence: number; // 0-1
